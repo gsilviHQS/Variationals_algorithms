@@ -16,6 +16,9 @@ Additionaly the conda enviroment install matplotlib (for plots) and ipykernel (t
 To install the conda environment run the following command:
 - source create_conda_env.sh
 
+Also, keep in mind that recently Github password authentication has been deprecated and will no longer work.
+Instead, token-based authentication (for example SSH Key) are required for all authenticated Git operations.
+
 ## Coding conventions
 
 In order to simplify the coding conventions, we provide a pylint.rc file in `misc/pylint.rc`.
