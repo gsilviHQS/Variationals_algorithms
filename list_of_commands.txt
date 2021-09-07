@@ -1,0 +1,9 @@
+#list of command used to build the conda environment
+conda create -n NEASQC4 python=3.9
+conda activate NEASQC4
+pip install qiskit-aer==0.8.2
+pip install  git+ssh://git@github.com/NEASQC/hqs_qs_nature.git
+pip install  git+ssh://git@github.com/NEASQC/az_qs_terra.git
+pip install matplotlib
+pip install ipykernel
+
