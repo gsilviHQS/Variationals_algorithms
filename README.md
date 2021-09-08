@@ -8,9 +8,16 @@ The `LICENCE` file contains the default licence statement as specified in the pr
 
 ## Building and installing
 
-For simplicity, an example of `setup.py` file is provided in this template.
-Feel free to modify it if you have exotic build recipes.
+To run the code in the repo a setup to build the conda environment is provided. 
+It install python 3.9, qiksit-aer (0.8.2), and the two repos here in NEASQC: qiskit-nature and qiskit-terra.
+These two repos are modified to include additional functionalities not present in the standard qiskit libraries.
+Additionaly the conda enviroment install matplotlib (for plots) and ipykernel (to use jupyter notebooks).
 
+To install the conda environment run the following command:
+- source create_conda_env.sh
+
+Also, keep in mind that recently Github password authentication has been deprecated and will no longer work.
+Instead, token-based authentication (for example SSH Key) are required for all authenticated Git operations.
 
 ## Coding conventions
 
