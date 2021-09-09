@@ -104,8 +104,8 @@ class VHA(EvolvedOperatorAnsatz):
                  reps: int = 1,
                  initial_state: Optional[QuantumCircuit] = None,
                  trotter_steps: int = 1,
-                 only_excitations: bool=False,
-                 splitting: bool=False):
+                 only_excitations: bool=False
+                 ):
         """
 
         Args:
@@ -151,7 +151,7 @@ class VHA(EvolvedOperatorAnsatz):
         self._max_spin_excitation = max_spin_excitation
         self._trotter_steps=trotter_steps
         self._only_excitations=only_excitations
-        self._splitting=splitting
+
 
         super().__init__(reps=reps, evolution=PauliTrotterEvolution(), initial_state=initial_state)
 
@@ -434,41 +434,11 @@ class VHA(EvolvedOperatorAnsatz):
                                 H_ex.append(op)
                   
 
-        if self._splitting==True: #split the H_hop and H_ex in commuting terms
-            
-            for H_to_consider in [H_hop,H_ex]:
-                copyH=H_to_consider[:] #copy all b
-                
-                for op in copyH:
-                    labA=op._labels[0]
-                    for i,op2 in enumerate(copyH):
-                        labB=op2._labels[0]
-                        bitw_res=[ord(a) & ord(b) for a,b in zip(labA,labB)] #make a bitwise to see if there is match in position of + or - (43=++ or 45=-- or 41=+-/-+)
-                        if 43 not in bitw_res and 45 not in bitw_res and 41 not in bitw_res : #if true put them together
-                            op+=op2
-                            labA=[chr(a) for a in bitw_res]
-                            for j,c in enumerate(labA):
-                                if c=='\t': labA[j]='+' #merge labels + and -
-                            copyH.pop(i)
-                    operators.append(op)
-            # for n in range(self._trotter_steps):
-            #     chunck=int(len(H_hop)/(n+1))
-            #     H_comb=[ sum(H_hop[i:i+chunck]) for i in range(0, len(H_hop), chunck)]
-            #     operators.extend(H_comb)
 
-
-            #     chunck=int(len(H_ex)/(n+1))
-            #     H_comb=[ sum(H_ex[i:i+chunck]) for i in range(0, len(H_ex), chunck)]
-            #     operators.extend(H_comb)
-            
+        for n in range(self._trotter_steps):
+            operators.append(sum(H_ex))
+            operators.append(sum(H_hop))
             operators.append(H_diag)
-
-        else:
-            
-            for n in range(self._trotter_steps):
-                operators.append(sum(H_ex))
-                operators.append(sum(H_hop))
-                operators.append(H_diag)
 
 
         
