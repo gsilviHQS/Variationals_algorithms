@@ -1,2 +1,2 @@
 from .lin_comb_full_mod import LinCombFullmod
-from .natural_gradient_mod import NewNaturalGradient
+from .lin_comb_mod import LinCombMod
