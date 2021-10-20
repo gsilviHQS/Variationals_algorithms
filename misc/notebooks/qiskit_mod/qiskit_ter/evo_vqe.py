@@ -14,7 +14,7 @@ from qiskit.opflow import (
     I,
 )
 from qiskit.opflow.gradients import GradientBase, Gradient, QFI, NaturalGradient
-from qiskit.algorithms.minimum_eigen_solvers import VQE, MinimumEigensolverResult
+from qiskit.algorithms.minimum_eigen_solvers import VQE, MinimumEigensolverResult, VQEResult
 from qiskit.algorithms.minimum_eigen_solvers.vqe import _validate_initial_point, _validate_bounds
 from qiskit.algorithms.exceptions import AlgorithmError
 from .lin_comb_mod import LinCombMod
