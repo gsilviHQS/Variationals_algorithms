@@ -34,7 +34,7 @@ init_state = HartreeFock(num_spin_orbitals, num_particles, converter)
 # setup the ansatz for VQE
 from qiskit.circuit.library import TwoLocal
 
-ansatz = TwoLocal(num_spin_orbitals, ['ry', 'rz'], 'cz')
+ansatz = TwoLocal(num_spin_orbitals, ['ry', 'rz'], 'cz',reps=2)
 
 # add the initial state
 ansatz.compose(init_state, front=True)
@@ -49,7 +49,9 @@ from qiskit_ter import LinCombFullmod,LinCombMod, EvoVQE
 # set the backend for the quantum computation
 from qiskit.utils import QuantumInstance
 from qiskit import Aer, BasicAer
-qinstance = QuantumInstance(Aer.get_backend('statevector_simulator'), shots=1, seed_simulator=2, seed_transpiler=2)
+be_options = {"max_parallel_threads":8,"max_parallel_experiments":0, "statevector_parallel_threshold":4}
+qinstance = QuantumInstance(Aer.get_backend('statevector_simulator'), shots=1, seed_simulator=2, 
+                                                 seed_transpiler=2, backend_options = be_options)
 
 vqe = EvoVQE(ansatz, optimizer=optimizer, quantum_instance=qinstance)
 result = vqe.compute_evolve(q_elop)

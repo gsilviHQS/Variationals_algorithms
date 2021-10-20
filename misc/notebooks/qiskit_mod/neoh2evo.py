@@ -83,7 +83,9 @@ from qiskit.algorithms import VQE
 # set the backend for the quantum computation
 from qiskit.utils import QuantumInstance
 from qiskit import Aer, BasicAer
-qinstance = QuantumInstance(Aer.get_backend('statevector_simulator'), shots=1, seed_simulator=2, seed_transpiler=2)
+be_options = {"max_parallel_threads":8,"max_parallel_experiments":0, "statevector_parallel_threshold":4}
+qinstance = QuantumInstance(Aer.get_backend('statevector_simulator'), shots=1, seed_simulator=2, 
+                                                   seed_transpiler=2, backend_options=be_options)
 #qinstance = QuantumInstance(Aer.get_backend('aer_simulator_statevector_gpu'), shots=1, seed_simulator=2, seed_transpiler=2)
 
 from qiskit_ter import LinCombFullmod,LinCombMod, EvoVQE
