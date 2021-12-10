@@ -1,4 +1,4 @@
-name: NEASQC4
+name: NEASQC4featMYQLM
 channels:
   - conda-forge
 dependencies:
@@ -63,7 +63,11 @@ dependencies:
     - python-constraint==1.4.0
     - python-dateutil==2.8.2
     - pyzmq==22.2.1
-    - qiskit-aer==0.8.2
+    ##- qiskit_nature==0.2.0
+    - qiskit_aer==0.9.0
+    - qiskit_ignis==0.6.0
+    - qiskit_terra==0.18.2
+    - qiskit_ibmq_provider==0.16.0
     - retworkx==0.10.1
     - scikit-learn==0.24.2
     - scipy==1.7.1

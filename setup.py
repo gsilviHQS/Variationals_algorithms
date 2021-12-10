@@ -23,13 +23,15 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 setup(
-    name="mylib",
-    version="0.0.1",
-    author="XXX",
+    name="neasqcvariational",
+    version="0.0.2",
+    python_requires='>=3.9',
+    author="Arseny Kovyrshin, Giorgio Silvi",
     license="European Union Public License 1.2",
 
-    packages=find_packages(),
-    install_requires=["numpy"],
+    packages=find_packages(exclude=("my_lib",)),
+    #install_requires=["numpy","pytest","qiskit_nature=0.20.0","qiskit_terra=0.18.2","qiskit_aer=0.9.0"],
+    install_requires=["numpy","pytest","qiskit_nature","qiskit_terra","qiskit_aer"],
     # Don't change these two lines
     tests_require=["pytest"],
     cmdclass={'test': PyTest},
