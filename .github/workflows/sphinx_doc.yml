@@ -47,13 +47,13 @@ jobs:
           
       - name: Create local changes
         run: |
-          mkdir -p $GITHUB_REPOSITORY
-          cp -r doc/_build/* $GITHUB_REPOSITORY
+          mkdir -p neasqc/Variationals_algorithms
+          cp -r doc/_build/* neasqc/Variationals_algorithms
           cd neasqc
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
-          git commit -m "Update documentation from github actions, user: $GITHUB_ACTOR" || true
+          git commit -m "Update documentation from github actions" || true
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
