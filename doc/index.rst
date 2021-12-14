@@ -1,4 +1,4 @@
 The NEASQC project documentation!
 ====================================
 
-Hello Variationals_algorithms! 
+Hello Variationals_algorithms!!
