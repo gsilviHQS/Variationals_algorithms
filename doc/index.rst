@@ -3,7 +3,7 @@
 .. only:: header
 
     NEASQC Project
-    ===============
+    ================
 
 .. only:: html
 
