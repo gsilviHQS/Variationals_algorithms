@@ -43,15 +43,15 @@ jobs:
           fetch-depth: 0 # otherwise, there would be errors pushing refs to the destination repository.
           repository: NEASQC/neasqc.github.io
           path: "neasqc"
-          #token: ${{ secrets.WORKFLOW_TOKEN }}
+          token: ${{ secrets.ACTION_TOKEN }}
           
       - name: Create local changes
         run: |
           mkdir -p $GITHUB_REPOSITORY
           cp -r doc/_build/* $GITHUB_REPOSITORY
           cd neasqc
-          #git config --local user.email "action@github.com"
-          #git config --local user.name "GitHub Action"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           git add .
           git commit -m "Update documentation from github actions, user: $GITHUB_ACTOR" || true
       - name: Push changes
