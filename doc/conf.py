@@ -28,25 +28,18 @@ napoleon_google_docstring = True
 templates_path = ['_templates']
 
 nbsphinx_allow_errors = True
-sys.path.append(os.path.abspath('./sphinx_helpers/'))
+#sys.path.append(os.path.abspath('./sphinx_helpers/'))
 
 bibtex_bibfiles = ["./biblio.bib", "./biblio_sp.bib"]
 
-from sphinx_helpers.toctree_filter import TocTreeFilt
-from sphinx_helpers.runblock import RunBlock, RunBlockMemory
-from sphinx_helpers.notebooks import setup as setup_notebooks
 # Subscript to add the toctree helpers in the path and use them
 
 def setup(app):
     app.add_config_value('toc_filter_exclude', [], 'html')
-    app.add_directive('toctree-filt', TocTreeFilt)
-    app.add_directive('run-block', RunBlock)
-    app.add_directive('run-block-mem', RunBlockMemory)
     app.connect('autodoc-process-docstring',
                 between('^.*SIGNATURE.*$', exclude=True))
     app.add_css_file('css/custom.css')
     # app.add_js_file('js/custom.js')
-    setup_notebooks(app)
 
     return app
 
