@@ -47,8 +47,8 @@ jobs:
           
       - name: Create local changes
         run: |
-          mkdir -p ${{ GITHUB_REPOSITORY }}
-          cp -r doc/_build/* ${{ GITHUB_REPOSITORY }}
+          mkdir -p $GITHUB_REPOSITORY
+          cp -r doc/_build/* $GITHUB_REPOSITORY
           cd neasqc
           #git config --local user.email "action@github.com"
           #git config --local user.name "GitHub Action"
