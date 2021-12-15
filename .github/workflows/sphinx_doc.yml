@@ -27,7 +27,7 @@ jobs:
           # The command used to build your documentation.
           build-command: 'sphinx-build -b html . _build' # optional, default is make html
           # Run before the build command, you can use this to install system level dependencies, for example with "apt-get update -y && apt-get install -y perl"
-          pre-build-command: 'python -m pip install sphinx_rtd_theme nbsphinx sphinxcontrib.bibtex sphinxcontrib.programoutput sphinxcontrib.contentui'
+          pre-build-command: 'python -m pip install sphinx_rtd_theme nbsphinx sphinxcontrib.bibtex sphinxcontrib.programoutput sphinxcontrib.contentui autodoc'
           
       #- name: Upload a Build Artifact
       #  uses: actions/upload-artifact@v2
@@ -47,8 +47,9 @@ jobs:
           
       - name: Create local changes
         run: |
-          mkdir -p neasqc/Variationals_algorithms
-          cp -r doc/_build/* neasqc/Variationals_algorithms
+          mkdir -p neasqc/Variationals_algorithms #Replace test with repo name
+          rm -rf neasqc/Variationals_algorithms/* #Replace test with repo name
+          cp -r doc/_build/* neasqc/Variationals_algorithms #Replace test with repo name
           cd neasqc
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
