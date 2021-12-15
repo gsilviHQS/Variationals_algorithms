@@ -1,0 +1,3 @@
+[submodule "myqlm-interop"]
+	path = myqlm-interop
+	url = https://github.com/myQLM/myqlm-interop
