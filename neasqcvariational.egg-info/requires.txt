@@ -1,5 +1,0 @@
-numpy
-pytest
-qiskit_nature
-qiskit_terra
-qiskit_aer
