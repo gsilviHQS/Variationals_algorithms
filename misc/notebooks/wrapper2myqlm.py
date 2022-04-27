@@ -11,7 +11,8 @@ from qat.core import Observable
 from qat.plugins import Junction
 from qat.core import Result
 from qat.lang.AQASM import Program, RY
-
+from qat.qlmaas.result import AsyncResult
+import time 
 class VQE_MyQLM(VQE):
     def get_energy_evaluation(
         self,
@@ -45,7 +46,7 @@ class VQE_MyQLM(VQE):
             self._ansatz_params, operator, return_expectation=True
         )
 
-        def create_job(operator,params):
+        def create_job(operator, params):
             # check if the parameters passed are a range or single value
             if params is not None and len(params.keys()) > 0:
                 p_0 = list(params.values())[0]
@@ -76,7 +77,13 @@ class VQE_MyQLM(VQE):
 
                 job = qcirc.to_job(observable=Observable(operator.num_qubits,
                                                          matrix=operator.to_matrix()))
-                result = self.submit_job(job)
+                result_temp = self.submit_job(job)
+                if isinstance(result_temp, AsyncResult):  # chek if we are dealing with remote 
+                    while result_temp.get_status() != 'done':
+                        time.sleep(.1)
+                    result = result_temp.get_result()
+                else:
+                    result = result_temp
                 results.append(result.value)
             return results
 
@@ -128,6 +135,9 @@ class IterativeExploration(Junction):
         # run the problem
         result = self.method.solve(self.problem)
         return Result(value=result.total_energies[0], meta_data=meta_data)
+        
+    def get_specs(x):  # OVERRIDE PROBLEMATIC FUNCTION THAT PREVENT USING REMOTE QLM
+        return
 
 
 def simple_qlm_job():
