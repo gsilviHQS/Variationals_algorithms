@@ -1,14 +1,14 @@
 import sys
 import os
-sys.path = []
-# sys.path.remove('/usr/local/lib64/python3.9/site-packages')
-# sys.path.remove('/usr/local/lib/python3.9/site-packages')
-# sys.path.remove('/usr/lib64/python3.9/site-packages')
+#sys.path = []
+sys.path.remove('/usr/local/lib64/python3.9/site-packages') #this has qiskit in it (wrong version for this case)
+sys.path.remove('/usr/local/lib/python3.9/site-packages')
+sys.path.remove('/usr/lib64/python3.9/site-packages')
 sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/lib/python3.9/site-packages"))
-sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/bin"))
-sys.path.append(os.path.expanduser("/usr/lib64/python3.9"))
-sys.path.append(os.path.expanduser("/usr/lib64/python3.9/lib-dynload"))
-sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/lib/python3.9/site-packages/qat"))
+#sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/bin"))
+# sys.path.append(os.path.expanduser("/usr/lib64/python3.9"))
+# sys.path.append(os.path.expanduser("/usr/lib64/python3.9/lib-dynload"))
+# sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/lib/python3.9/site-packages/qat"))
 
 from qiskit_nature.transformers.second_quantization.electronic import FreezeCoreTransformer
 from qiskit_nature.drivers import UnitsType
@@ -16,11 +16,13 @@ from qiskit_nature.drivers.second_quantization.pyscfd import PySCFDriver
 from qiskit.algorithms import VQE
 from qiskit.opflow import OperatorBase
 from qiskit.compiler import transpile
-from qiskit_nature.algorithms import VQEUCCFactory
+from qiskit_nature.algorithms import VQEUCCFactory,GroundStateEigensolver
 from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
+import qiskit_nature
 import numpy as np
 from typing import List, Callable, Union
-
+import qiskit
+import inspect
 # myqlm functions
 
 from importlib.machinery import SourceFileLoader
@@ -106,9 +108,10 @@ class VQE_MyQLM(VQE):
                 result_temp = self.submit_job(job)
 
                 if isinstance(result_temp, AsyncResult):  # chek if we are dealing with remote
-                    while result_temp.get_status() != 'done':
-                        time.sleep(.1)
-                    result = result_temp.get_result()
+                #     while result_temp.get_status() != 'done':
+                #         time.sleep(.1)
+                #     result = result_temp.get_result()
+                    result_temp.join()
                 else:
                     result = result_temp
                 results.append(result.value)
@@ -143,38 +146,42 @@ class VQE_MyQLM(VQE):
 
 
 class IterativeExplorationVQE(Junction):
-    def __init__(self, method=None):  #, molecule=None, bond_distance=None):
+    def __init__(self, method=None, molecule=None):
         super(IterativeExplorationVQE, self).__init__()
         print('Initialization')
         self.method = method  #updateVQE_MyQLM(method)
         self.updateVQE_MyQLM()
-        # bond_distance = 0.735
-        # # Molecule
-        # molecule = 'H .0 .0 -{0}; H .0 .0 {0}'
-        # driver = PySCFDriver(atom=molecule.format(bond_distance / 2), unit=UnitsType.ANGSTROM, basis='sto3g')
-        # es_problem = ElectronicStructureProblem(driver, q_molecule_transformers=[FreezeCoreTransformer(freeze_core=True, remove_orbitals=[])])
+        self.molecule = molecule
+        driver = PySCFDriver(atom=molecule, unit=UnitsType.ANGSTROM, basis='sto3g')
+        es_problem = ElectronicStructureProblem(driver, q_molecule_transformers=[FreezeCoreTransformer(freeze_core=True, remove_orbitals=[])])
 
-        #self.problem = es_problem
+        self.problem = es_problem
 
     def run(self, initial_job, meta_data):
         # include the method to execute job INSIDE the modified VQE
-        self.method.solver._vqe.submit_job = self.execute
+        #self.method.solver._vqe.submit_job = self.execute
         # run the problem
+        vqe_solver = VQEUCCFactory(quantum_instance=None,
+                                   optimizer=self.method.solver._optimizer
+                                   )
+        new_method = GroundStateEigensolver(self.method.qubit_converter, vqe_solver)
         result = self.method.solve(self.problem)
-        meta_data['result'] = result
-        return Result(value=result.total_energies[0], meta_data=meta_data)
+        #meta_data['result'] = result
+        #return Result(value=result.total_energies[0], meta_data=meta_data)
+        #meta_data['qiskit']=str(inspect.getfullargspec(ElectronicStructureProblem))
+        meta_data['qiskit']=str(qiskit_nature.__version__)+str(inspect.getfullargspec(ElectronicStructureProblem))
+        return Result(value=33, meta_data=meta_data)
+
 
     # def get_specs(x):  # OVERRIDE PROBLEMATIC FUNCTION THAT PREVENT USING REMOTE QLM
     #     return
     def updateVQE_MyQLM(self):
-        # new_groundstatesolver = VQEUCCFactory(groundstatesolver.solver._quantum_instance,
-        #                                       optimizer=groundstatesolver.solver._optimizer,
-        #                                       ansatz=groundstatesolver.ansatz)
+
         self.method.solver._vqe = VQE_MyQLM(ansatz=None,
-                                            quantum_instance=self.method.solver._quantum_instance,
-                                            optimizer=self.method.solver._optimizer,
-                                            initial_point=self.method.solver._initial_point,
-                                            gradient=self.method.solver._gradient,
-                                            expectation=self.method.solver._expectation,
-                                            include_custom=self.method.solver._include_custom)
-        return 
+                                                quantum_instance=self.method.solver._quantum_instance,
+                                                optimizer=self.method.solver._optimizer,
+                                                initial_point=self.method.solver._initial_point,
+                                                gradient=self.method.solver._gradient,
+                                                expectation=self.method.solver._expectation,
+                                                include_custom=self.method.solver._include_custom)
+        return
