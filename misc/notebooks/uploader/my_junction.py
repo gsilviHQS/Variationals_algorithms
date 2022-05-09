@@ -1,5 +1,6 @@
 import sys
 import os
+os.environ["TMPDIR"] = "/tmp" #set the folder for temporary files
 #sys.path = []
 sys.path.remove('/usr/local/lib64/python3.9/site-packages') #this has qiskit in it (wrong version for this case)
 sys.path.remove('/usr/local/lib/python3.9/site-packages')
@@ -16,17 +17,14 @@ from qiskit_nature.drivers.second_quantization.pyscfd import PySCFDriver
 from qiskit.algorithms import VQE
 from qiskit.opflow import OperatorBase
 from qiskit.compiler import transpile
-from qiskit_nature.algorithms import VQEUCCFactory,GroundStateEigensolver
+# from qiskit_nature.algorithms import VQEUCCFactory,GroundStateEigensolver
 from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
 import qiskit_nature
 import numpy as np
 from typing import List, Callable, Union
-import qiskit
-import inspect
-# myqlm functions
+
 
 from importlib.machinery import SourceFileLoader
-  
 # imports the module from the given path
 qatinterop = SourceFileLoader("qat","/home_nfs/gsilvi/.local/lib/python3.9/site-packages/qat/__init__.py").load_module()
 # from qat.interop.qiskit import qiskit_to_qlm
@@ -101,16 +99,12 @@ class VQE_MyQLM(VQE):
                                             basis_gates=self._quantum_instance.backend.configuration().basis_gates,
                                             optimization_level=0)
                 qcirc = qatinterop.interop.qiskit.qiskit_to_qlm(transpiled_circ)
-                #qcirc = transpiled_circ #wrong, to remove
                 job = qcirc.to_job(observable=Observable(operator.num_qubits,
                                                          matrix=operator.to_matrix()))
                 # START COMPUTATION
                 result_temp = self.submit_job(job)
 
                 if isinstance(result_temp, AsyncResult):  # chek if we are dealing with remote
-                #     while result_temp.get_status() != 'done':
-                #         time.sleep(.1)
-                #     result = result_temp.get_result()
                     result_temp.join()
                 else:
                     result = result_temp
@@ -142,46 +136,33 @@ class VQE_MyQLM(VQE):
         return energy_evaluation
 
 
-
-
-
 class IterativeExplorationVQE(Junction):
-    def __init__(self, method=None, molecule=None):
+    def __init__(self, method=None, molecule=None, remove_orbitals=[]):
         super(IterativeExplorationVQE, self).__init__()
         print('Initialization')
-        self.method = method  #updateVQE_MyQLM(method)
+        self.method = method
         self.updateVQE_MyQLM()
-        self.molecule = molecule
+        # self.molecule = molecule
         driver = PySCFDriver(atom=molecule, unit=UnitsType.ANGSTROM, basis='sto3g')
-        es_problem = ElectronicStructureProblem(driver, q_molecule_transformers=[FreezeCoreTransformer(freeze_core=True, remove_orbitals=[])])
-
+        es_problem = ElectronicStructureProblem(driver, q_molecule_transformers=[FreezeCoreTransformer(freeze_core=True, remove_orbitals=remove_orbitals)])
         self.problem = es_problem
 
     def run(self, initial_job, meta_data):
         # include the method to execute job INSIDE the modified VQE
-        #self.method.solver._vqe.submit_job = self.execute
+        self.method.solver._vqe.submit_job = self.execute
         # run the problem
-        vqe_solver = VQEUCCFactory(quantum_instance=None,
-                                   optimizer=self.method.solver._optimizer
-                                   )
-        new_method = GroundStateEigensolver(self.method.qubit_converter, vqe_solver)
         result = self.method.solve(self.problem)
-        #meta_data['result'] = result
-        #return Result(value=result.total_energies[0], meta_data=meta_data)
-        #meta_data['qiskit']=str(inspect.getfullargspec(ElectronicStructureProblem))
-        meta_data['qiskit']=str(qiskit_nature.__version__)+str(inspect.getfullargspec(ElectronicStructureProblem))
-        return Result(value=33, meta_data=meta_data)
+        meta_data['optimal_parameters'] = str(len(result.raw_result.optimal_parameters))
+        return Result(value=result.total_energies[0], meta_data=meta_data)
 
 
-    # def get_specs(x):  # OVERRIDE PROBLEMATIC FUNCTION THAT PREVENT USING REMOTE QLM
-    #     return
     def updateVQE_MyQLM(self):
 
         self.method.solver._vqe = VQE_MyQLM(ansatz=None,
-                                                quantum_instance=self.method.solver._quantum_instance,
-                                                optimizer=self.method.solver._optimizer,
-                                                initial_point=self.method.solver._initial_point,
-                                                gradient=self.method.solver._gradient,
-                                                expectation=self.method.solver._expectation,
-                                                include_custom=self.method.solver._include_custom)
+                                            quantum_instance=self.method.solver._quantum_instance,
+                                            optimizer=self.method.solver._optimizer,
+                                            initial_point=self.method.solver._initial_point,
+                                            gradient=self.method.solver._gradient,
+                                            expectation=self.method.solver._expectation,
+                                            include_custom=self.method.solver._include_custom)
         return
