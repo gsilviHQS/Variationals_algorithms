@@ -2,12 +2,23 @@ import sys
 import os
 os.environ["TMPDIR"] = "/tmp" #set the folder for temporary files
 #sys.path = []
-sys.path.remove('/usr/local/lib64/python3.9/site-packages') #this has qiskit in it (wrong version for this case)
-sys.path.remove('/usr/local/lib/python3.9/site-packages')
-sys.path.remove('/usr/lib64/python3.9/site-packages')
+sys.path.remove("/usr/local/lib64/python3.9/site-packages") #this has qiskit in it (wrong version for this case)
+sys.path.remove("/usr/local/lib/python3.9/site-packages")
+sys.path.remove("/usr/lib64/python3.9/site-packages")
+sys.path.remove("/usr/lib64/python3.9") #problematic to remove, but it give away the wrong qat
 sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/lib/python3.9/site-packages"))
+sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/lib/python3.9/site-packages/qat"))
+sys.path.append(os.path.expanduser("/usr/lib64/python3.9"))
+os.environ["PYTHONPATH"] = '/home_nfs/gsilvi/.local/lib/python3.9/site-packages'
+# from importlib import import_module
+
+# interop = import_module('qat.interop', package='qat')
+
+# qiskit_to_qlm = interop.qiskit.qlm_to_qiskit
+
+
 #sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/bin"))
-# sys.path.append(os.path.expanduser("/usr/lib64/python3.9"))
+
 # sys.path.append(os.path.expanduser("/usr/lib64/python3.9/lib-dynload"))
 # sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/lib/python3.9/site-packages/qat"))
 
@@ -17,25 +28,24 @@ from qiskit_nature.drivers.second_quantization.pyscfd import PySCFDriver
 from qiskit.algorithms import VQE
 from qiskit.opflow import OperatorBase
 from qiskit.compiler import transpile
-# from qiskit_nature.algorithms import VQEUCCFactory,GroundStateEigensolver
+from qiskit_nature.algorithms import VQEUCCFactory,GroundStateEigensolver
 from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
 import qiskit_nature
 import numpy as np
 from typing import List, Callable, Union
 
 
-from importlib.machinery import SourceFileLoader
+# from importlib.machinery import SourceFileLoader
 # imports the module from the given path
-qatinterop = SourceFileLoader("qat","/home_nfs/gsilvi/.local/lib/python3.9/site-packages/qat/__init__.py").load_module()
-# from qat.interop.qiskit import qiskit_to_qlm
 
-# from qatinterop.interop.qiskit import qiskit_to_qlm
 from qat.core import Observable
 from qat.plugins import Junction
 from qat.core import Result
-from qat.lang.AQASM import Program, RY
 from qat.qlmaas.result import AsyncResult
-import time
+import qat
+
+import importlib.util
+from importlib import reload 
 
 
 class VQE_MyQLM(VQE):
@@ -98,13 +108,15 @@ class VQE_MyQLM(VQE):
                 transpiled_circ = transpile(ansatz_in_use.decompose(),
                                             basis_gates=self._quantum_instance.backend.configuration().basis_gates,
                                             optimization_level=0)
-                qcirc = qatinterop.interop.qiskit.qiskit_to_qlm(transpiled_circ)
+                
+                qcirc = self.q2q(transpiled_circ)
                 job = qcirc.to_job(observable=Observable(operator.num_qubits,
-                                                         matrix=operator.to_matrix()))
+                                                                  matrix=operator.to_matrix()))
                 # START COMPUTATION
                 result_temp = self.submit_job(job)
 
                 if isinstance(result_temp, AsyncResult):  # chek if we are dealing with remote
+                    print('mismacth plugin(local)| qpu(remote)')
                     result_temp.join()
                 else:
                     result = result_temp
@@ -137,10 +149,20 @@ class VQE_MyQLM(VQE):
 
 
 class IterativeExplorationVQE(Junction):
-    def __init__(self, method=None, molecule=None, remove_orbitals=[]):
+    def __init__(self, method=None, molecule=None, remove_orbitals=[], converter=None, solver=None):
         super(IterativeExplorationVQE, self).__init__()
-        print('Initialization')
-        self.method = method
+        #
+        # spec = importlib.util.spec_from_file_location("qat","/home_nfs/gsilvi/.local/lib/python3.9/site-packages/qat/__init__.py",submodule_search_locations=[''])
+        # module = importlib.util.module_from_spec(spec)
+        # spec.loader.exec_module(module)
+        # sys.modules['qat'] = module
+        reload(qat)
+        from qat.interop.qiskit import qiskit_to_qlm
+        self.q2q = qiskit_to_qlm
+
+        #self.method = method
+        self.old_solver = solver
+        self.method = GroundStateEigensolver(converter, solver)
         self.updateVQE_MyQLM()
         # self.molecule = molecule
         driver = PySCFDriver(atom=molecule, unit=UnitsType.ANGSTROM, basis='sto3g')
@@ -150,11 +172,22 @@ class IterativeExplorationVQE(Junction):
     def run(self, initial_job, meta_data):
         # include the method to execute job INSIDE the modified VQE
         self.method.solver._vqe.submit_job = self.execute
+        self.method.solver._vqe.q2q = self.q2q
         # run the problem
         result = self.method.solve(self.problem)
-        meta_data['optimal_parameters'] = str(len(result.raw_result.optimal_parameters))
+        #meta_data['optimal_parameters'] = str(len(result.raw_result.optimal_parameters))
+        # meta_data['optimal_parameters'] = str(os.path.abspath(qat.__file__))
+        
+        fout = os.path.expanduser("~/pip_log_out")
+        ferr = os.path.expanduser("~/pip_log_err")
+        os.system(f'echo $PYTHONPATH> {fout} 2> {ferr}')
+        with open(fout, 'r') as fin:
+            data_out = fin.read()
+        with open(ferr, 'r') as fin:
+            data_err = fin.read()
+        meta_data['optimal_parameters'] = str(data_out)+str(data_err)+'__'+str(sys.path)+'_QAT:'+str(os.path.abspath(qat.__file__))
+        self.method.solver = self.old_solver
         return Result(value=result.total_energies[0], meta_data=meta_data)
-
 
     def updateVQE_MyQLM(self):
 
