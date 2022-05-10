@@ -8,12 +8,14 @@ from typing import List, Callable, Union
 # myqlm functions
 from qat.interop.qiskit import qiskit_to_qlm
 from qat.core import Observable
-from qat.plugins import Junction
-from qat.core import Result
 from qat.lang.AQASM import Program, RY
 from qat.qlmaas.result import AsyncResult
-import time 
-class VQE_MyQLM(VQE):
+import time
+#import misc.notebooks.uploader.my_junction as my_junction
+
+
+class VQE_MyQLM_local(VQE):
+    """Modified version of VQE to submit jobs to QLM qpus."""
     def get_energy_evaluation(
         self,
         operator: OperatorBase,
@@ -46,14 +48,16 @@ class VQE_MyQLM(VQE):
             self._ansatz_params, operator, return_expectation=True
         )
 
-        def create_job(operator, params):
-            # check if the parameters passed are a range or single value
+        def create_and_run_job(operator: OperatorBase,
+                               params: dict):
+            """ Compose the qlm job from ansatz binded to params and measure operato on it"""
+            # check if the parameters passed are as a range or single value
             if params is not None and len(params.keys()) > 0:
                 p_0 = list(params.values())[0]
                 if isinstance(p_0, (list, np.ndarray)):
                     num_parameterizations = len(p_0)
                     param_bindings = [
-                        {param: value_list[i] for param, value_list in params.items()}  # type: ignore
+                        {param: value_list[i] for param, value_list in params.items()}
                         for i in range(num_parameterizations)
                     ]
                 else:
@@ -63,13 +67,10 @@ class VQE_MyQLM(VQE):
             else:
                 param_bindings = None
                 num_parameterizations = 1
-            
-            # START COMPUTATION
-
             results = []
             for circ_params in param_bindings:
                 ansatz_in_use = self._ansatz.bind_parameters(circ_params)
-                
+
                 transpiled_circ = transpile(ansatz_in_use.decompose(),
                                             basis_gates=self._quantum_instance.backend.configuration().basis_gates,
                                             optimization_level=0)
@@ -77,8 +78,10 @@ class VQE_MyQLM(VQE):
 
                 job = qcirc.to_job(observable=Observable(operator.num_qubits,
                                                          matrix=operator.to_matrix()))
+                # START COMPUTATION
                 result_temp = self.submit_job(job)
-                if isinstance(result_temp, AsyncResult):  # chek if we are dealing with remote 
+
+                if isinstance(result_temp, AsyncResult):  # chek if we are dealing with remote
                     while result_temp.get_status() != 'done':
                         time.sleep(.1)
                     result = result_temp.get_result()
@@ -91,7 +94,7 @@ class VQE_MyQLM(VQE):
             parameter_sets = np.reshape(parameters, (-1, num_parameters))
             param_bindings = dict(zip(self._ansatz_params, parameter_sets.transpose().tolist()))
 
-            means = np.real(create_job(operator, param_bindings))
+            means = np.real(create_and_run_job(operator, param_bindings))
 
             if self._callback is not None:
                 parameter_sets = np.reshape(parameters, (-1, num_parameters))
@@ -111,33 +114,16 @@ class VQE_MyQLM(VQE):
 
         return energy_evaluation
 
+
 def updateVQE_MyQLM(groundstatesolver):
-    groundstatesolver.solver._vqe = VQE_MyQLM(ansatz=None,
-                                              quantum_instance=groundstatesolver.solver._quantum_instance,
-                                              optimizer=groundstatesolver.solver._optimizer,
-                                              initial_point=groundstatesolver.solver._initial_point,
-                                              gradient=groundstatesolver.solver._gradient,
-                                              expectation=groundstatesolver.solver._expectation,
-                                              include_custom=groundstatesolver.solver._include_custom)
+    groundstatesolver.solver._vqe = VQE_MyQLM_local(ansatz=None,
+                                                    quantum_instance=groundstatesolver.solver._quantum_instance,
+                                                    optimizer=groundstatesolver.solver._optimizer,
+                                                    initial_point=groundstatesolver.solver._initial_point,
+                                                    gradient=groundstatesolver.solver._gradient,
+                                                    expectation=groundstatesolver.solver._expectation,
+                                                    include_custom=groundstatesolver.solver._include_custom)
     return groundstatesolver
-
-
-
-class IterativeExploration(Junction):
-    def __init__(self, method, es_problem):
-        super(IterativeExploration, self).__init__()
-        self.method = method
-        self.problem = es_problem
-
-    def run(self, initial_job, meta_data):
-        # include the method to execute job INSIDE the modified VQE
-        self.method.solver._vqe.submit_job = self.execute
-        # run the problem
-        result = self.method.solve(self.problem)
-        return Result(value=result.total_energies[0], meta_data=meta_data)
-        
-    def get_specs(x):  # OVERRIDE PROBLEMATIC FUNCTION THAT PREVENT USING REMOTE QLM
-        return
 
 
 def simple_qlm_job():
@@ -148,8 +134,21 @@ def simple_qlm_job():
     return job
 
 
-def build_QLM_stack(groundstatesolver, es_problem, qpu):
-    new_groundstatesolver = updateVQE_MyQLM(groundstatesolver)
-    stack = IterativeExploration(new_groundstatesolver, es_problem) | qpu
+# def build_QLM_stack(groundstatesolver, es_problem, qpu):
+#     new_groundstatesolver = updateVQE_MyQLM(groundstatesolver)
+#     plugin = my_junction.IterativeExplorationVQE(new_groundstatesolver, es_problem)
+#     stack = plugin | qpu
+#     return stack
+
+
+def build_QLM_stack(groundstatesolver, molecule, plugin, qpu):
+    # new_groundstatesolver = updateVQE_MyQLM(groundstatesolver)
+    plugin_ready = plugin(method=groundstatesolver, molecule=molecule)
+    stack = plugin_ready | qpu
     return stack
 
+
+def run_QLM_stack(stack):
+    solution = stack.submit(simple_qlm_job())
+    qiskit_result = solution.meta_data['result']
+    return qiskit_result
