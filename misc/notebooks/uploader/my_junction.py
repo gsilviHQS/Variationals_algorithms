@@ -2,9 +2,12 @@ import sys
 import os
 os.environ["TMPDIR"] = "/tmp"  # set the folder for temporary files
 
-sys.path.remove("/usr/local/lib64/python3.9/site-packages")  # this has qiskit in it (wrong version for this case)
-sys.path.remove("/usr/local/lib/python3.9/site-packages")
-sys.path.remove("/usr/lib64/python3.9/site-packages")
+paths = ["/usr/local/lib64/python3.9/site-packages","/usr/local/lib/python3.9/site-packages","/usr/lib64/python3.9/site-packages"]
+
+for path in paths:
+    if path in sys.path:
+            sys.path.remove(path)
+
 sys.path.append(os.path.expanduser("/home_nfs/gsilvi/.local/lib/python3.9/site-packages"))
 
 from qiskit_nature.transformers.second_quantization.electronic import FreezeCoreTransformer
@@ -25,6 +28,10 @@ import qat
 from importlib import reload
 reload(qat)
 from qat.interop.qiskit import qiskit_to_qlm
+import json
+#Need to find a way to include those libraries, try uploading multiplt files
+from qiskit_mod.qiskit_nat import VHA
+from qiskit_mod.qiskit_ter import LinCombFullmod,LinCombMod
 
 
 class VQE_MyQLM(VQE):
@@ -89,7 +96,8 @@ class VQE_MyQLM(VQE):
                                             optimization_level=0)
                 
                 qcirc = qiskit_to_qlm(transpiled_circ)
-                job = qcirc.to_job(observable=Observable(operator.num_qubits,
+                job = qcirc.to_job(nbshots=self.nb_shots,
+                                   observable=Observable(operator.num_qubits,
                                                          matrix=operator.to_matrix()))
                 # START COMPUTATION
                 result_temp = self.submit_job(job)
@@ -128,9 +136,15 @@ class VQE_MyQLM(VQE):
 
 
 class IterativeExplorationVQE(Junction):
-    def __init__(self, method=None, molecule=None, remove_orbitals=[], converter=None, solver=None):
+    def __init__(self,
+                 method=None,
+                 molecule=None,
+                 remove_orbitals=[],
+                 converter=None,
+                 solver=None,
+                 shots=1024):
         super(IterativeExplorationVQE, self).__init__()
-        # self.molecule = molecule
+        self.shots = shots
         if method is None:
             self.method = GroundStateEigensolver(converter, solver)
         else:
@@ -145,12 +159,16 @@ class IterativeExplorationVQE(Junction):
     def run(self, initial_job, meta_data):
         # include the method to execute job INSIDE the modified VQE
         self.method.solver._vqe.submit_job = self.execute
+        self.method.solver._vqe.nb_shots = self.shots
+
         
         # run the problem
         result = self.method.solve(self.problem)
 
         #save metadata
-        meta_data['optimal_parameters'] = str(len(result.raw_result.optimal_parameters))
+
+        meta_data['optimal_parameters'] = json.dumps(list(result.raw_result.optimal_parameters.values()))
+        meta_data['hartree_fock_energy'] = str(result.hartree_fock_energy)
         meta_data['qat'] = str(os.path.abspath(qat.__file__))
         
         # self.method.solver = self.old_solver
