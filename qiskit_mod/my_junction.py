@@ -30,6 +30,7 @@ from importlib import reload
 reload(qat)
 from qat.interop.qiskit import qiskit_to_qlm,qlm_to_qiskit
 import json
+import io
 #Need to find a way to include those libraries, try uploading multiplt files
 from qiskit_mod.qiskit_nat import VHA
 from qiskit_mod.qiskit_ter import LinCombFullmod,LinCombMod
@@ -66,15 +67,17 @@ class IterativeExplorationVQE(Junction):
         result = self.method.solve(self.problem)
 
         #save metadata
-
-        meta_data['optimal_parameters'] = json.dumps(list(result.raw_result.optimal_parameters.values()))
-        meta_data['hartree_fock_energy'] = str(result.hartree_fock_energy)
+        if hasattr(result,'raw_result'):
+            meta_data['raw_result'] = str(result.raw_result)
+            meta_data['optimal_parameters'] = json.dumps(list(result.raw_result.optimal_parameters.values()))
+        if hasattr(result,'hartree_fock_energy'):    
+            meta_data['hartree_fock_energy'] = str(result.hartree_fock_energy)
         if hasattr(result,'num_iterations'):
             meta_data['num_iterations'] = str(result.num_iterations)
         if hasattr(result,'finishing_criterion'):
             meta_data['finishing_criterion'] = str(result.finishing_criterion)
-        meta_data['qat'] = str(qiskit.__qiskit_version__)#str(os.path.abspath(qat.__file__))
-        meta_data['raw_result'] = str(result.raw_result)
+        meta_data['qiskit_version'] = str(qiskit.__qiskit_version__)#str(os.path.abspath(qat.__file__))
+        
 
         # self.method._solver = self.old_solver
         return Result(value=result.total_energies[0], meta_data=meta_data)
@@ -103,19 +106,31 @@ class IterativeExplorationEvoVQE(Junction):
         # run the problem
         result = self.method.compute_evolve(self.operator)
 
-        #save metadata
+        output = io.BytesIO()
+        output2 = io.BytesIO()
+        np.savez(output, x=result.optimal_point)
+        np.savez(output2, x=result.eigenstate)
 
-        meta_data['optimal_parameters'] = json.dumps(list(result.raw_result.optimal_parameters.values()))
-        meta_data['hartree_fock_energy'] = str(result.hartree_fock_energy)
-        if hasattr(result,'num_iterations'):
-            meta_data['num_iterations'] = str(result.num_iterations)
-        if hasattr(result,'finishing_criterion'):
-            meta_data['finishing_criterion'] = str(result.finishing_criterion)
-        meta_data['qat'] = str(qiskit.__qiskit_version__)#str(os.path.abspath(qat.__file__))
-        meta_data['raw_result'] = str(result.raw_result)
+        #save metadata
+        if hasattr(result,'optimal_point'):
+            meta_data['optimal_point'] = output.getvalue()
+        if hasattr(result,'optimal_parameters'):
+            meta_data['optimal_parameters'] = json.dumps(list(result.optimal_parameters.values()))
+        if hasattr(result,'optimal_value'):    
+            meta_data['optimal_value'] = str(result.optimal_value)
+        if hasattr(result,'cost_function_evals'):
+            meta_data['cost_function_evals'] = str(result.cost_function_evals)
+        if hasattr(result,'optimizer_time'):
+            meta_data['optimizer_time'] = str(result.optimizer_time)
+        if hasattr(result,'eigenvalue'):
+            meta_data['eigenvalue'] = str(result.eigenvalue)
+        if hasattr(result,'eigenstate'):
+            meta_data['eigenstate'] = output2.getvalue()
+        meta_data['qiskit_version'] = str(qiskit.__qiskit_version__)#str(os.path.abspath(qat.__file__))
+        
 
         # self.method._solver = self.old_solver
-        return Result(value=result.total_energies[0], meta_data=meta_data)
+        return Result(value=result.eigenvalue, meta_data=meta_data)
 
 
 def get_energy_evaluation_QLM(
