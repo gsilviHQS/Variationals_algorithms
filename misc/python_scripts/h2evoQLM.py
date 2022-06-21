@@ -12,17 +12,17 @@ from qiskit_nature.drivers.second_quantization import PySCFDriver, GaussianForce
 from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
 from qiskit_nature.converters.second_quantization import QubitConverter
 from qiskit_nature.mappers.second_quantization import JordanWignerMapper, ParityMapper, DirectMapper
-import qiskit
-print(qiskit.__qiskit_version__)
 
 
+
+#### MODIFICATION TO USE MYQLM
 from qat.qpus import PyLinalg
+from qiskit_mod.wrapper2myqlm import run_QLM_stack
 from qiskit_mod.my_junction import IterativeExplorationEvoVQE,get_energy_evaluation_QLM
 from qiskit.algorithms import VQE
 VQE.get_energy_evaluation = get_energy_evaluation_QLM #override the function, class-wide
 
-
-use_remote = True
+use_remote = False
 
 if use_remote:
     from qlmaas.qpus import LinAlg
@@ -32,7 +32,7 @@ if use_remote:
 else:
     qlm_qpu = PyLinalg() #local
     plugin_in_use = IterativeExplorationEvoVQE
-
+####
 
 driver = PySCFDriver(atom="H .0 .0 .0; H .0 .0 0.735", charge=0, spin=0, unit=UnitsType.ANGSTROM, basis='sto3g')
 problem = ElectronicStructureProblem(driver)
@@ -76,13 +76,15 @@ qinstance = QuantumInstance(Aer.get_backend('statevector_simulator'), shots=1, s
                                                  seed_transpiler=2, backend_options = be_options)
 
 vqe = EvoVQE(ansatz, optimizer=optimizer, quantum_instance=qinstance)
-from qiskit_mod.wrapper2myqlm import build_QLM_stack,run_QLM_stack
 
-#MYQLM addition
-
-
-stack = plugin_in_use(method=vqe,operator=q_elop, shots=0) | qlm_qpu
+#MYQLM addition to create the stack
+stack = plugin_in_use(method=vqe,
+                      execute_function='compute_evolve',
+                      operator=q_elop,
+                      shots=0
+                      ) | qlm_qpu
 result = run_QLM_stack(stack)
+
 # result = vqe.compute_evolve(q_elop)
 
 electronic_structure_result = problem.interpret(result)

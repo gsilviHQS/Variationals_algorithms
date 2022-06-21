@@ -13,6 +13,26 @@ from qiskit_nature.converters.second_quantization import QubitConverter
 from qiskit_nature.mappers.second_quantization import JordanWignerMapper
 from qiskit_mod.qiskit_nat import MixedMapper
 
+#### MODIFICATION TO USE MYQLM
+from qat.qpus import PyLinalg
+from qiskit_mod.wrapper2myqlm import run_QLM_stack
+from qiskit_mod.my_junction import IterativeExplorationEvoVQE,get_energy_evaluation_QLM
+from qiskit.algorithms import VQE
+VQE.get_energy_evaluation = get_energy_evaluation_QLM #override the function, class-wide
+
+use_remote = True
+
+if use_remote:
+    from qlmaas.qpus import LinAlg
+    from qlmaas.plugins import IterativeExplorationEvoVQE as IterativeExplorationEvoVQEremote
+    qlm_qpu = LinAlg() #remote
+    plugin_in_use = IterativeExplorationEvoVQEremote
+else:
+    qlm_qpu = PyLinalg() #local
+    plugin_in_use = IterativeExplorationEvoVQE
+####
+
+
 driver = PySCFDriver(atom="H .0 .0 .0; H .0 .0 0.735", charge=0, spin=0, unit=UnitsType.ANGSTROM, basis='sto3g')
 
 problem = TotalProblem(driver)
@@ -79,7 +99,7 @@ from qiskit.algorithms.optimizers import CG
 optimizer = CG(maxiter=800)
 
 # setup and run VQE
-from qiskit.algorithms import VQE
+# from qiskit.algorithms import VQE
 
 # set the backend for the quantum computation
 from qiskit.utils import QuantumInstance
@@ -110,10 +130,10 @@ print("        nuclei Sz=> ",PauliExpectation().convert(StateFn(n_sz).adjoint()@
 def aux_print(res):
     print("the Total Electronic Nuclear Energy=> {}".format(res.optimal_value))
     print("[Num el.=> {0:.2f} nuc.=> {1:.2f}] [Sz el=> {2:.2f} nuc=> {3:.2f}]"
-                                      .format(res.aux_operator_eigenvalues[0,0],
-                                      res.aux_operator_eigenvalues[1,0],
-                                      res.aux_operator_eigenvalues[2,0],
-                                      res.aux_operator_eigenvalues[3,0]))
+                                      .format(res.aux_operator_eigenvalues[0][0],
+                                      res.aux_operator_eigenvalues[1][0],
+                                      res.aux_operator_eigenvalues[2][0],
+                                      res.aux_operator_eigenvalues[3][0]))
     print(','.join(map(str, result.optimal_point)))
 
 # ROUGH INITIAL APPROXIMATION FOR THE PARAMETERS OF TWOLOCAL ANSATZ
@@ -121,7 +141,17 @@ vqe.initial_point = [6.,0.,4.,0.,0.,-3.,2.,3.,2.,0.,3.,-6.,-3.,6.,-2.,-0.,2.,0.,
                              -3.,3.,-3.,3.,6.,-5.,0.,0.,4.,0.,-4.,3.,-6.,0.,3.,-5.,0.,-4.,0.,2.,0.,-4.,-3.]
 
 vqe_en_op = mix_en_op.reduce()
-result = vqe.compute_minimum_eigenvalue(vqe_en_op,aux_operators=[el_n,nuc_n,e_sz,n_sz])
+#MYQLM addition to create the stack
+stack = plugin_in_use(method=vqe,
+                      execute_function='compute_minimum_eigenvalue',
+                      operator=vqe_en_op,
+                      shots=0,
+                      aux_operators=[el_n,nuc_n,e_sz,n_sz]
+                      ) | qlm_qpu
+result = run_QLM_stack(stack)
+
+
+# result = vqe.compute_minimum_eigenvalue(vqe_en_op,aux_operators=[el_n,nuc_n,e_sz,n_sz])
 aux_print(result)
 
 total_result = problem.interpret(result)

@@ -50,6 +50,7 @@ def pack_result(qlm_result):
     result.eigenvalue = complex(qlm_result.meta_data['eigenvalue'])
     # result.eigenstate =  np.load(io.BytesIO(qlm_result.meta_data['eigenstate']))
     result.eigenstate =  json.loads(qlm_result.meta_data['eigenstate'])
+    result.aux_operator_eigenvalues = json.loads(qlm_result.meta_data['aux_operator_eigenvalues'])
     return result
 
 def run_QLM_stack(stack):
@@ -64,7 +65,8 @@ def run_QLM_stack(stack):
                                        "optimal_value": "",
                                        "cost_function_evals": "",
                                        "eigenvalue": "",
-                                       "eigenstate": ""})
+                                       "eigenstate": "",
+                                       "aux_operator_eigenvalues":""})
     if isinstance(solution, AsyncResult):  # chek if we are dealing with remote
         print('Waiting for remote job to complete....', end='\t')
         qlm_result = solution.join()

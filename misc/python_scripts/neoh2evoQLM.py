@@ -13,6 +13,25 @@ from qiskit_nature.converters.second_quantization import QubitConverter
 from qiskit_nature.mappers.second_quantization import JordanWignerMapper
 from qiskit_mod.qiskit_nat import MixedMapper
 
+#### MODIFICATION TO USE MYQLM
+from qat.qpus import PyLinalg
+from qiskit_mod.wrapper2myqlm import run_QLM_stack
+from qiskit_mod.my_junction import IterativeExplorationEvoVQE,get_energy_evaluation_QLM
+from qiskit.algorithms import VQE
+VQE.get_energy_evaluation = get_energy_evaluation_QLM #override the function, class-wide
+
+use_remote = True
+
+if use_remote:
+    from qlmaas.qpus import LinAlg
+    from qlmaas.plugins import IterativeExplorationEvoVQE as IterativeExplorationEvoVQEremote
+    qlm_qpu = LinAlg() #remote
+    plugin_in_use = IterativeExplorationEvoVQEremote
+else:
+    qlm_qpu = PyLinalg() #local
+    plugin_in_use = IterativeExplorationEvoVQE
+####
+
 driver = PySCFDriver(atom="H .0 .0 .0; H .0 .0 0.735", charge=0, spin=0, unit=UnitsType.ANGSTROM, basis='sto3g')
 
 problem = TotalProblem(driver)
@@ -78,7 +97,7 @@ from qiskit.algorithms.optimizers import L_BFGS_B
 optimizer = L_BFGS_B(maxiter=800)
 
 # setup and run VQE
-from qiskit.algorithms import VQE
+# from qiskit.algorithms import VQE
 
 # set the backend for the quantum computation
 from qiskit.utils import QuantumInstance
@@ -94,7 +113,20 @@ vqe = EvoVQE(ansatz, optimizer=optimizer, quantum_instance=qinstance)
 #vqe.initial_point = [6.,0.,4.,0.,0.,-3.,2.,3.,2.,0.,3.,-6.,-3.,6.,-2.,-0.,2.,0.,-2.,4.,-0.,0.,-6.,-6.,-4.,-3.,3.,-3.,3.,6.,-5.,0.,0.,4.,0.,-4.,3.,-6.,0.,3.,-5.,0.,-4.,0.,2.,0.,-4.,-3.]
 vqe.initial_point = [6.2831848609129874,1.570543787554636,4.711297700245818,-1.569954059720944,-0.00016948680218153091,-3.1415911265531604,-6.822182672631528e-07,3.1416210172436205,2.0402096916548556,-0.07603280718678695,2.9356341241956114,-6.260527545120678,-2.9990325055739464,6.0077772114760375,-1.6529070475437981,0.003429653517713078,2.9955518372510346,0.0022045505208202823,-3.1415103683814114,3.1438770710772217,-3.818621105169968e-06,-9.153988035045935e-06,-6.283186243286005,-6.283185706788387,-3.8068804819715463,-3.0655600369127636,2.935635291028905,-3.118934856728131,3.005815571424384,6.014460455363797,-5.032449511052682,-0.0041493348713920915,4.969001863728771e-07,4.71264347562269,1.5718876776486708,-4.711544772975571,3.141418886443523,-6.283184008700246,9.829716636235556e-07,3.1416209606216636,-4.917035050213839,-0.08296782480382431,-3.9627139625557906,-0.037288990338437446,2.0025839032415687,-0.00258431339752288,-4.002880231659448,-2.997123494261866]
 vqe_en_op = mix_en_op.reduce()
-result = vqe.compute_evolve(vqe_en_op, isteps=2, rsteps=80, di=0.2, dr=0.01)
+
+#MYQLM addition to create the stack
+stack = plugin_in_use(method=vqe,
+                      execute_function='compute_evolve',
+                      operator=vqe_en_op,
+                      shots=0,
+                      isteps=10,
+                      rsteps=30,
+                      di=0.5,
+                      dr=0.05
+                      ) | qlm_qpu
+result = run_QLM_stack(stack)
+
+# result = vqe.compute_evolve(vqe_en_op, isteps=2, rsteps=80, di=0.2, dr=0.01)
 
 total_result = problem.interpret(result)
 print(total_result)

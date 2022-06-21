@@ -92,20 +92,29 @@ class IterativeExplorationVQE(Junction):
 class IterativeExplorationEvoVQE(Junction):
     def __init__(self,
                  method=None,
+                 execute_function= None,
                  operator=None,
-                 shots=0):
+                 shots=0,
+                 **kwargs):
         super(IterativeExplorationEvoVQE, self).__init__()
         self.shots = shots
         self.method = method
+        self.method.nb_shots = self.shots
+        self.method.execute_function = getattr(self.method, execute_function)
         self.operator = operator
+        if kwargs:
+            self.kwargs = kwargs
     
     def run(self, initial_job, meta_data):
         # include the method to execute job INSIDE the modified VQE
         self.method.execute = self.execute
-        self.method.nb_shots = self.shots
+        
 
         # run the problem
-        result = self.method.compute_evolve(self.operator)
+        if hasattr(self,'kwargs'):
+            result = self.method.execute_function(self.operator, **self.kwargs)
+        else:
+            result = self.method.execute_function(self.operator)
 
 
         #save metadata
@@ -123,6 +132,8 @@ class IterativeExplorationEvoVQE(Junction):
             meta_data['eigenvalue'] = str(result.eigenvalue)
         if hasattr(result,'eigenstate'):
             meta_data['eigenstate'] = json.dumps(result.eigenstate.tolist(), default=encode_complex)
+        if hasattr(result,'aux_operator_eigenvalues'):
+            meta_data['aux_operator_eigenvalues'] = json.dumps(result.aux_operator_eigenvalues.tolist())
         meta_data['qiskit_version'] = str(qiskit.__qiskit_version__)#str(os.path.abspath(qat.__file__))
         
 
