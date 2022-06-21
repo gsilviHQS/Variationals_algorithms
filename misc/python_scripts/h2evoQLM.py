@@ -15,9 +15,24 @@ from qiskit_nature.mappers.second_quantization import JordanWignerMapper, Parity
 import qiskit
 print(qiskit.__qiskit_version__)
 
+
+from qat.qpus import PyLinalg
 from qiskit_mod.my_junction import IterativeExplorationEvoVQE,get_energy_evaluation_QLM
 from qiskit.algorithms import VQE
 VQE.get_energy_evaluation = get_energy_evaluation_QLM #override the function, class-wide
+
+
+use_remote = True
+
+if use_remote:
+    from qlmaas.qpus import LinAlg
+    from qlmaas.plugins import IterativeExplorationEvoVQE as IterativeExplorationEvoVQEremote
+    qlm_qpu = LinAlg() #remote
+    plugin_in_use = IterativeExplorationEvoVQEremote
+else:
+    qlm_qpu = PyLinalg() #local
+    plugin_in_use = IterativeExplorationEvoVQE
+
 
 driver = PySCFDriver(atom="H .0 .0 .0; H .0 .0 0.735", charge=0, spin=0, unit=UnitsType.ANGSTROM, basis='sto3g')
 problem = ElectronicStructureProblem(driver)
@@ -64,10 +79,9 @@ vqe = EvoVQE(ansatz, optimizer=optimizer, quantum_instance=qinstance)
 from qiskit_mod.wrapper2myqlm import build_QLM_stack,run_QLM_stack
 
 #MYQLM addition
-from qat.interop.qiskit import QPUToBackend
-from qat.qpus import get_default_qpu,PyLinalg
-qpu_local = PyLinalg() #local
-stack = IterativeExplorationEvoVQE(method=vqe,operator=q_elop, shots=0) | qpu_local
+
+
+stack = plugin_in_use(method=vqe,operator=q_elop, shots=0) | qlm_qpu
 result = run_QLM_stack(stack)
 # result = vqe.compute_evolve(q_elop)
 
