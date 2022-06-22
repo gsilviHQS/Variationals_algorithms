@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-
+import os
+os.environ["TMPDIR"] = "/tmp"  # set the folder for temporary files
 import numpy as np
 
 import warnings

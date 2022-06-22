@@ -1,7 +1,0 @@
-build/
-dist/
-qat_interop*
-*/__pycache__/
-*/*/__pycache__/
-*/*/*/__pycache__/
-
