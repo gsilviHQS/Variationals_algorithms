@@ -31,7 +31,7 @@ def build_QLM_stack(groundstatesolver, molecule, plugin, qpu, shots=None, remove
     stack = plugin_ready | qpu
     return stack
 
-class QiskitResult:
+class MyResult:
     def __init__(self, solution):
         self.total_energies = solution.value
         self.hartree_fock_energy = float(solution.meta_data['hartree_fock_energy'])
@@ -39,21 +39,26 @@ class QiskitResult:
         self.raw_result.optimal_parameters = json.loads(solution.meta_data['optimal_parameters'])
 
 def pack_result(qlm_result):
-    result = VQEResult()
+    if qlm_result.meta_data['raw_result'] == "":
+        result = VQEResult()
 
-    # result.optimal_point = np.load(io.BytesIO(qlm_result.meta_data['optimal_point']))
-    result.optimal_point = json.loads(qlm_result.meta_data['optimal_point'])
-    result.optimal_parameters =json.loads(qlm_result.meta_data['optimal_parameters'])
-    result.optimal_value = float(qlm_result.meta_data['optimal_value'])
-    result.cost_function_evals = float(qlm_result.meta_data['cost_function_evals'])
-    result.optimizer_time = float(qlm_result.meta_data['optimizer_time'])
-    result.eigenvalue = complex(qlm_result.meta_data['eigenvalue'])
-    # result.eigenstate =  np.load(io.BytesIO(qlm_result.meta_data['eigenstate']))
-    result.eigenstate =  json.loads(qlm_result.meta_data['eigenstate'])
-    result.aux_operator_eigenvalues = json.loads(qlm_result.meta_data['aux_operator_eigenvalues'])
+        # result.optimal_point = np.load(io.BytesIO(qlm_result.meta_data['optimal_point']))
+        result.optimal_point = json.loads(qlm_result.meta_data['optimal_point'])
+        result.optimal_parameters =json.loads(qlm_result.meta_data['optimal_parameters'])
+        result.optimal_value = float(qlm_result.meta_data['optimal_value'])
+        result.cost_function_evals = float(qlm_result.meta_data['cost_function_evals'])
+        result.optimizer_time = float(qlm_result.meta_data['optimizer_time'])
+        result.eigenvalue = complex(qlm_result.meta_data['eigenvalue'])
+        # result.eigenstate =  np.load(io.BytesIO(qlm_result.meta_data['eigenstate']))
+        result.eigenstate =  json.loads(qlm_result.meta_data['eigenstate'])
+        if qlm_result.meta_data['aux_operator_eigenvalues'] != '':
+            result.aux_operator_eigenvalues = json.loads(qlm_result.meta_data['aux_operator_eigenvalues'])
+    else:
+        result = MyResult(qlm_result)
+
     return result
 
-def run_QLM_stack(stack):
+def run_QLM_stack(stack):  
     solution = stack.submit(simple_qlm_job(),
                             meta_data={"optimal_parameters": "",
                                        "hartree_fock_energy": "",
@@ -75,3 +80,5 @@ def run_QLM_stack(stack):
         qlm_result = solution
     
     return pack_result(qlm_result)
+
+

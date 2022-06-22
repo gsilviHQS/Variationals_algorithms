@@ -22,7 +22,7 @@ from qiskit_mod.my_junction import IterativeExplorationEvoVQE,get_energy_evaluat
 from qiskit.algorithms import VQE
 VQE.get_energy_evaluation = get_energy_evaluation_QLM #override the function, class-wide
 
-use_remote = False
+use_remote = True
 
 if use_remote:
     from qlmaas.qpus import LinAlg
@@ -83,6 +83,7 @@ stack = plugin_in_use(method=vqe,
                       operator=q_elop,
                       shots=0
                       ) | qlm_qpu
+
 result = run_QLM_stack(stack)
 
 # result = vqe.compute_evolve(q_elop)

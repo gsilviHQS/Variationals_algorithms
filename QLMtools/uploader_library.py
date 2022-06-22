@@ -79,8 +79,8 @@ class Uploader(metaclass=MetaLocalPlugin):
 
 import os
 import itertools
-path1 = "./qiskit_mod/qiskit_nat/"
-path2 = "./qiskit_mod/qiskit_ter/"
+path1 = "../qiskit_mod/qiskit_nat/"
+path2 = "../qiskit_mod/qiskit_ter/"
 
 paths = [path1, path2]
 # for (dirpath, dirnames, filenames) in itertools.chain.from_iterable(os.walk(path) for path in paths):
@@ -96,6 +96,6 @@ for path in paths:
             f.append(item)
 
     print(f)
-    uploader = Uploader(path="~/custom_qlm_code/"+path, localpath=path, files=f)
-    uploader.deploy_files()
+    uploader = Uploader(path="~/custom_qlm_code/"+path[2:], localpath=path, files=f)
+    #uploader.deploy_files()
     uploader.upload()

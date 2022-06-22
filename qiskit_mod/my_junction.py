@@ -133,7 +133,8 @@ class IterativeExplorationEvoVQE(Junction):
         if hasattr(result,'eigenstate'):
             meta_data['eigenstate'] = json.dumps(result.eigenstate.tolist(), default=encode_complex)
         if hasattr(result,'aux_operator_eigenvalues'):
-            meta_data['aux_operator_eigenvalues'] = json.dumps(result.aux_operator_eigenvalues.tolist())
+            if result.aux_operator_eigenvalues is not None:
+                meta_data['aux_operator_eigenvalues'] = json.dumps(result.aux_operator_eigenvalues.tolist())
         meta_data['qiskit_version'] = str(qiskit.__qiskit_version__)#str(os.path.abspath(qat.__file__))
         
 

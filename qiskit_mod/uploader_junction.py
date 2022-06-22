@@ -76,5 +76,5 @@ class Uploader(metaclass=MetaLocalPlugin):
 
 
 uploader = Uploader(path="~/custom_qlm_code/", files=["./my_junction.py"])
-uploader.deploy_files()
+#uploader.deploy_files()
 uploader.upload()

@@ -62,7 +62,7 @@ class LinCombMod(LinComb):
                             trim_after_grad_gate,
                         )
 
-                        # apply S if imaginary part needed
+                        #MODIFICATION from qiskit: apply S if imaginary part needed
                         if self._img: grad_circuit.s(qr_superpos)
 
                         # apply final hadamard on superposition qubit
