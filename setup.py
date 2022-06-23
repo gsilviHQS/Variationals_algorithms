@@ -29,7 +29,7 @@ setup(
     author="Arseny Kovyrshin, Giorgio Silvi",
     license="European Union Public License 1.2",
 
-    packages=find_packages(exclude=("my_lib","myqlm-interop")),
+    packages=find_packages(exclude=("my_lib","misc")),
     #install_requires=["numpy","pytest","qiskit_nature=0.2.0","qiskit_terra=0.18.2","qiskit_aer=0.9.0"],
     install_requires=["numpy","pytest","qiskit_nature","qiskit_terra","qiskit_aer"],
     # Don't change these two lines

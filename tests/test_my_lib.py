@@ -1,9 +1,10 @@
 # -*- coding : utf-8 -*-
 
 """
-Test for this module
+Tests for module qiskit_mod
 """
 
+import qiskit_nature
 from qiskit_nature.drivers import UnitsType, Molecule
 from qiskit_nature.drivers.second_quantization.pyscfd import PySCFDriver
 from qiskit_nature.transformers.second_quantization.electronic import FreezeCoreTransformer
@@ -20,77 +21,21 @@ from qiskit.providers.aer import AerSimulator
 from qiskit.opflow.gradients import Gradient, NaturalGradient, QFI, Hessian
 from qiskit.circuit.library import TwoLocal
 from qiskit.test.mock import FakeVigo
-from qat.interop.qiskit import QPUToBackend
 from qat.qpus import get_default_qpu,PyLinalg
+import qat.interop
 
 
-from qiskit_mod.my_junction import IterativeExplorationVQE
-from qiskit_mod.wrapper2myqlm import build_QLM_stack,run_QLM_stack
-from qiskit_mod.qiskit_ter import LinCombFullmod,LinCombMod
+#modules to be tested
+from qiskit_mod.my_junction import IterativeExplorationVQE,get_energy_evaluation_QLM
+from qiskit_mod.wrapper2myqlm import build_QLM_stack, run_QLM_stack
+from qiskit_mod.qiskit_ter import LinCombFullmod, LinCombMod, EvoVQE
 from qiskit_mod.qiskit_nat import VHA
 
+import pytest
 
 
 
-class TestIterativeExplorationVQE:
-    """
-    Testing IterativeExplorationVQE
-    """
-    def initialize_requirement(self):
-        """
-        Initialize requirement for the class
-        """
-        qubit_converter = QubitConverter(mapper=ParityMapper(), two_qubit_reduction=True)
-        molecule = 'H .0 .0 -{0}; H .0 .0 {0}'.format(.5)
-        quantum_instance = QuantumInstance(backend=AerSimulator(method="statevector"), max_credits=None)
-        vqe_solver = VQEUCCFactory(quantum_instance, optimizer=L_BFGS_B(maxiter=1000))
-        calc = GroundStateEigensolver(qubit_converter, vqe_solver)
-        return calc, molecule
 
-
-    #1. test if the method is called
-    def test_init(self):
-        """
-        Test if the method is called
-        """
-        #create a new instance of the class
-        method,molecule = self.initialize_requirement()
-        instance = IterativeExplorationVQE(method,molecule)
-        #check if the method is called
-        assert instance.__init__ is not None
-
- 
-    
-    #3. test if the method returns the right result
-    def test_run_locally(self):
-        """
-        Test if the method returns the right result
-        """
-        qpu_local = PyLinalg() #local QPU
-        qubit_converter = QubitConverter(mapper=ParityMapper(), two_qubit_reduction=True)
-        molecule = 'H .0 .0 -{0}; H .0 .0 {0}'.format(.5)
-        driver = PySCFDriver(atom=molecule, unit=UnitsType.ANGSTROM, basis='sto3g')
-        es_problem = ElectronicStructureProblem(driver,q_molecule_transformers=[FreezeCoreTransformer(freeze_core=True, remove_orbitals=[])])
-        quantum_instance = QuantumInstance(backend=AerSimulator(method="statevector"), max_credits=None)
-        vqe_solver = VQEUCCFactory(quantum_instance, optimizer=L_BFGS_B(maxiter=1000))
-        calc = GroundStateEigensolver(qubit_converter, vqe_solver)
-
-        res_qiskit = calc.solve(es_problem)
-        assert res_qiskit is not None
-        print(res_qiskit.total_energies)
-
-        stack = build_QLM_stack(calc,
-                                molecule,
-                                IterativeExplorationVQE,
-                                qpu_local
-                                )
-        assert stack is not None
-        res_qlm = run_QLM_stack(stack)
-        assert res_qlm is not None
-        print(res_qlm.total_energies)
-
-        #compare the complex results to make sure th are almost the same, up to a certain tolerance
-        assert abs(res_qiskit.total_energies - res_qlm.total_energies) < 1e-10
 
        
 
@@ -159,6 +104,7 @@ class TestLinCombFullmod:
         """
         Test if the method is called
         """
+
         driver = PySCFDriver(atom='H .0 .0 -{0}; H .0 .0 {0}'.format(.5),
                              unit=UnitsType.ANGSTROM,
                              basis='sto3g')
@@ -174,7 +120,8 @@ class TestLinCombFullmod:
         hartree_fock_state = HartreeFock(num_spin_orbitals=4,
                                          num_particles=(1,1), 
                                          qubit_converter=qubit_converter)
-        quantum_instance = QuantumInstance(backend=AerSimulator(method="statevector"))
+        quantum_instance = QuantumInstance(backend=AerSimulator(method="statevector"),
+                                           seed_simulator=2)
         ansz = UCC(qubit_converter,
                    num_particles=(1,1),
                    num_spin_orbitals=4,
@@ -199,8 +146,111 @@ class TestLinCombFullmod:
         assert resIevo_2 is not None
         print(resIevo_1.total_energies)
         print(resIevo_2.total_energies)
-        assert abs(resIevo_1.total_energies - resIevo_2.total_energies) < 1e-3
-    def test_result_2(self):
-        
-        
+        assert abs(resIevo_1.total_energies - resIevo_2.total_energies) < 1e-6
 
+
+#@pytest.mark.skip(reason="no way of currently testing this")
+class TestEvoVQE:
+    """
+    Testing EvoVQE
+    """
+    def test_result(self):
+        """
+        Test if the method is called
+        """
+        preferred_init_points = [ 2.84423991,  0.53030966,  2.43188532, -0.01508258, -3.67104147, -1.431773,
+        -2.48607032,  5.96911853,  6.0788555,  -0.46502543, -3.00303091,  5.14090953,
+        -5.2216476,  -1.70987665, -4.03845972,  3.38503706,  5.85335864, -6.1359201,
+        0.06661329, -5.10481995, -0.22901936, -0.81899338, -4.86628121,  5.22849925]
+        driver = PySCFDriver(atom='H .0 .0 -{0}; H .0 .0 {0}'.format(.5),
+                             unit=UnitsType.ANGSTROM,
+                             basis='sto3g')
+        es_problem = ElectronicStructureProblem(driver,
+                                                q_molecule_transformers=[FreezeCoreTransformer(freeze_core=True,
+                                                                                               remove_orbitals=[])])
+        elop = es_problem.second_q_ops()
+        qubit_converter = QubitConverter(mapper=JordanWignerMapper())
+        q_elop = qubit_converter.convert(elop[0])
+
+
+        init_state = HartreeFock(4, (1,1), qubit_converter)
+        ansatz = TwoLocal(4, ['ry', 'rz'], 'cz',reps=2)
+        # add the initial state
+        ansatz.compose(init_state, front=True)
+
+        be_options = {"max_parallel_threads":8,"max_parallel_experiments":0, "statevector_parallel_threshold":4}
+        quantum_instance = QuantumInstance(backend=AerSimulator(method="statevector"),
+                                           shots=1,
+                                           seed_simulator=2, 
+                                           seed_transpiler=2,
+                                           backend_options = be_options)
+        
+        vqe = EvoVQE(ansatz, optimizer=L_BFGS_B(), quantum_instance=quantum_instance)
+        vqe.initial_point = preferred_init_points
+        result = vqe.compute_evolve(q_elop, isteps=2, rsteps=2)
+        assert(result.eigenvalue==-1.1380348319173705+0j)
+
+class TestIterativeExplorationVQE:
+    """
+    Testing IterativeExplorationVQE
+    """
+    def initialize_requirement(self):
+        """
+        Initialize requirement for the class
+        """
+        qubit_converter = QubitConverter(mapper=ParityMapper(), two_qubit_reduction=True)
+        molecule = 'H .0 .0 -{0}; H .0 .0 {0}'.format(.5)
+        quantum_instance = QuantumInstance(backend=AerSimulator(method="statevector"), max_credits=None)
+        vqe_solver = VQEUCCFactory(quantum_instance, optimizer=L_BFGS_B(maxiter=1000))
+        calc = GroundStateEigensolver(qubit_converter, vqe_solver)
+        return calc, molecule
+
+
+    #1. test if the method is called
+    def test_init(self):
+        """
+        Test if the method is called
+        """
+        #create a new instance of the class
+        method,molecule = self.initialize_requirement()
+        instance = IterativeExplorationVQE(method,molecule)
+        #check if the method is called
+        assert instance.__init__ is not None
+
+ 
+    
+    #3. test if the method returns the right result
+    def test_run_locally(self):
+        """
+        Test if the method returns the right result
+        """
+        qpu_local = PyLinalg() #local QPU
+        qubit_converter = QubitConverter(mapper=ParityMapper(), two_qubit_reduction=True)
+        molecule = 'H .0 .0 -{0}; H .0 .0 {0}'.format(.5)
+        driver = PySCFDriver(atom=molecule, unit=UnitsType.ANGSTROM, basis='sto3g')
+        es_problem = ElectronicStructureProblem(driver,q_molecule_transformers=[FreezeCoreTransformer(freeze_core=True, remove_orbitals=[])])
+        quantum_instance = QuantumInstance(backend=AerSimulator(method="statevector"), max_credits=None)
+        vqe_solver = VQEUCCFactory(quantum_instance, optimizer=L_BFGS_B(maxiter=1000))
+        calc = GroundStateEigensolver(qubit_converter, vqe_solver)
+
+        res_qiskit = calc.solve(es_problem)
+        assert res_qiskit is not None
+        print(res_qiskit.total_energies)
+        from qiskit.algorithms import VQE
+        VQE.get_energy_evaluation = get_energy_evaluation_QLM
+        vqe_solver = VQEUCCFactory(quantum_instance, optimizer=L_BFGS_B(maxiter=1000))
+        #vqe_solver._vqe.get_energy_evaluation = get_energy_evaluation_QLM
+        calc = GroundStateEigensolver(qubit_converter, vqe_solver)
+        
+        stack = build_QLM_stack(calc,
+                                molecule,
+                                IterativeExplorationVQE,
+                                qpu_local
+                                )
+        assert stack is not None
+        res_qlm = run_QLM_stack(stack)
+        assert res_qlm is not None
+        print(res_qlm.total_energies)
+
+        #compare the complex results to make sure th are almost the same, up to a certain tolerance
+        assert abs(res_qiskit.total_energies - res_qlm.total_energies) < 1e-10
