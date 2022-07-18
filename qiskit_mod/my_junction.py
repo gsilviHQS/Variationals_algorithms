@@ -14,7 +14,8 @@ import qiskit
 from qiskit_nature.transformers.second_quantization.electronic import FreezeCoreTransformer
 from qiskit_nature.drivers import UnitsType
 from qiskit_nature.drivers.second_quantization.pyscfd import PySCFDriver
-from qiskit.algorithms import VQE
+# from qiskit.algorithms import VQE
+# VQE.get_energy_evaluation = get_energy_evaluation_QLM
 from qiskit.opflow import OperatorBase,StateFn,CircuitSampler,CircuitStateFn,PauliOp, PauliSumOp
 from qiskit.compiler import transpile
 from qiskit_nature.algorithms import VQEUCCFactory,GroundStateEigensolver
@@ -49,11 +50,13 @@ class IterativeExplorationVQE(Junction):
     def __init__(self,
                  method=None,
                  molecule=None,
+                 shots = None,
                  remove_orbitals=[],
-                 shots=0):
+                 ):
         super(IterativeExplorationVQE, self).__init__()
-        self.shots = shots
         self.method = method
+        self.method._solver.gradient.nb_shots = shots
+        self.method._solver._vqe.nb_shots = shots
 
         # create electronic structure problem
         driver = PySCFDriver(atom=molecule, unit=UnitsType.ANGSTROM, basis='sto3g')
@@ -65,8 +68,7 @@ class IterativeExplorationVQE(Junction):
 
     def run(self, initial_job, meta_data):
         self.method._solver._vqe.execute = self.execute
-        self.method._solver._vqe.nb_shots = self.shots
-
+        self.method._solver.gradient.execute = self.execute
         # run the problem
         result = self.method.solve(self.problem)
 
@@ -141,6 +143,58 @@ class IterativeExplorationEvoVQE(Junction):
         return Result(value=result.eigenvalue, meta_data=meta_data)
 
 
+
+##################################################################
+
+def create_and_run_job(self,
+                       operator_meas: OperatorBase,
+                       params: dict):
+            """ Compose the qlm job from ansatz binded to params and measure operato on it"""
+            # check if the parameters passed are as a range or single value
+            if params is not None and len(params.keys()) > 0:
+                p_0 = list(params.values())[0]
+                if isinstance(p_0, (list, np.ndarray)):
+                    num_parameterizations = len(p_0)
+                    param_bindings = [
+                        {param: value_list[i] for param, value_list in params.items()}
+                        for i in range(num_parameterizations)
+                    ]
+                else:
+                    num_parameterizations = 1
+                    param_bindings = [params]
+
+            else:
+                param_bindings = None
+                num_parameterizations = 1
+            results = []
+            
+            for circ_params in param_bindings:
+                ansatz_in_use = self._ansatz.assign_parameters(circ_params)
+                transpiled_circ = transpile(ansatz_in_use,
+                                            basis_gates=LIST_OF_GATES,
+                                            optimization_level=0)
+                qcirc = qiskit_to_qlm(transpiled_circ)
+                job = qcirc.to_job(observable=Observable(operator_meas.num_qubits, matrix=operator_meas.to_matrix()),nbshots=self.nb_shots) 
+                # print('Shots= ',job.nbshots)
+                # START COMPUTATION
+                result_temp = self.execute(job)
+
+                if isinstance(result_temp, AsyncResult):  # chek if we are dealing with remote job
+                    #case for local plugin/remote qpu
+                    result = result_temp.join()
+                    
+                else:
+                    result = result_temp
+                #Qiskit check
+                # sampler = CircuitSampler(self.quantum_instance)
+                # exp = ~StateFn(operator_meas) @ CircuitStateFn(transpiled_circ)
+                # converted = sampler.convert(exp)
+                # print('Evaluation (qiskit)',converted.eval(),'vs QLM',result.value)
+
+                results.append(result.value)
+            
+            return results
+
 def get_energy_evaluation_QLM(
         self,
         operator: OperatorBase,
@@ -177,63 +231,16 @@ def get_energy_evaluation_QLM(
         #print('Operator type',type(reversed_operator), reversed_operator)
         #print('Here',expectation.convert(StateFn(operator, is_measurement=True)).to_matrix_op())
 
-        def create_and_run_job(operator_meas: OperatorBase,
-                               params: dict):
-            """ Compose the qlm job from ansatz binded to params and measure operato on it"""
-            # check if the parameters passed are as a range or single value
-            if params is not None and len(params.keys()) > 0:
-                p_0 = list(params.values())[0]
-                if isinstance(p_0, (list, np.ndarray)):
-                    num_parameterizations = len(p_0)
-                    param_bindings = [
-                        {param: value_list[i] for param, value_list in params.items()}
-                        for i in range(num_parameterizations)
-                    ]
-                else:
-                    num_parameterizations = 1
-                    param_bindings = [params]
-
-            else:
-                param_bindings = None
-                num_parameterizations = 1
-            results = []
-            
-            for circ_params in param_bindings:
-                ansatz_in_use = self._ansatz.assign_parameters(circ_params)
-
-                transpiled_circ = transpile(ansatz_in_use.decompose(),
-                                            basis_gates=LIST_OF_GATES,
-                                            optimization_level=0)
-                qcirc = qiskit_to_qlm(transpiled_circ)
-                job = qcirc.to_job(observable=Observable(operator_meas.num_qubits, matrix=operator_meas.to_matrix()),nbshots=self.nb_shots) 
-                # START COMPUTATION
-                result_temp = self.execute(job)
-
-                if isinstance(result_temp, AsyncResult):  # chek if we are dealing with remote job
-                    #case for local plugin/remote qpu
-                    result = result_temp.join()
-                    
-                else:
-                    result = result_temp
-                #Qiskit check
-                # sampler = CircuitSampler(self.quantum_instance)
-                # exp = ~StateFn(operator_meas) @ CircuitStateFn(transpiled_circ)
-                # converted = sampler.convert(exp)
-                # print('Evaluation (qiskit)',converted.eval(),'vs QLM',result.value)
-
-                results.append(result.value)
-            
-            return results
+        
 
         def energy_evaluation(parameters):
             parameter_sets = np.reshape(parameters, (-1, num_parameters))
             param_bindings = dict(zip(self._ansatz_params, parameter_sets.transpose().tolist())) # combine values to parameters symbols
             #print('param_bindings',param_bindings)
             sampled_expect_op = self._circuit_sampler.convert(expect_op, params=param_bindings)
-            # print(operator)
-            
-            means = np.real(create_and_run_job(reversed_operator, param_bindings)) #important to reverse the operator because of different conventions QLM/Qiskit
-
+            #print('Qiskit result EE',np.real(sampled_expect_op.eval()))
+            means = np.real(create_and_run_job(self,reversed_operator, param_bindings)) #important to reverse the operator because of different conventions QLM/Qiskit
+            #print('QLM result EE',means)
             if self._callback is not None:
                 parameter_sets = np.reshape(parameters, (-1, num_parameters))
                 param_bindings = dict(zip(self._ansatz_params, parameter_sets.transpose().tolist()))
