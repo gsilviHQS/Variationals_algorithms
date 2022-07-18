@@ -18,16 +18,18 @@ import json
 import io
 
 
-def simple_qlm_job():
+def simple_qlm_job(nb_qubits,nb_shots):
     prog = Program()
-    qbits = prog.qalloc(1)
-    prog.apply(RY(prog.new_var(float, r"\beta")), qbits)
-    job = prog.to_circ().to_job(observable=Observable.sigma_z(0, 1))
+    qbits = prog.qalloc(nb_qubits)
+    #prog.apply(RY(prog.new_var(float, r"\beta")), qbits[0])
+    # job = prog.to_circ().to_job(o#bservable=Observable.sigma_z(0, 1))
+    job = prog.to_circ().to_job(nbshots=nb_shots)
+    print(job.nbshots)
     return job
 
 
-def build_QLM_stack(groundstatesolver, molecule, plugin, qpu, shots=None, remove_orbitals=None,):
-    plugin_ready = plugin(method=groundstatesolver, molecule=molecule, shots=shots, remove_orbitals=remove_orbitals)
+def build_QLM_stack(groundstatesolver, molecule, plugin, qpu, shots, remove_orbitals=None,):
+    plugin_ready = plugin(method=groundstatesolver, molecule=molecule, shots=shots,  remove_orbitals=remove_orbitals, )
     stack = plugin_ready | qpu
     return stack
 
@@ -58,8 +60,8 @@ def pack_result(qlm_result):
 
     return result
 
-def run_QLM_stack(stack):  
-    solution = stack.submit(simple_qlm_job(),
+def run_QLM_stack(stack, nb_qubits=1, nb_shots=0):  
+    solution = stack.submit(simple_qlm_job(nb_qubits,nb_shots),
                             meta_data={"optimal_parameters": "",
                                        "hartree_fock_energy": "",
                                        "qiskit_version": "",

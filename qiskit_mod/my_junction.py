@@ -55,7 +55,8 @@ class IterativeExplorationVQE(Junction):
                  ):
         super(IterativeExplorationVQE, self).__init__()
         self.method = method
-        self.method._solver.gradient.nb_shots = shots
+        if self.method._solver.gradient is not None:
+            self.method._solver.gradient.nb_shots = shots
         self.method._solver._vqe.nb_shots = shots
 
         # create electronic structure problem
@@ -68,7 +69,8 @@ class IterativeExplorationVQE(Junction):
 
     def run(self, initial_job, meta_data):
         self.method._solver._vqe.execute = self.execute
-        self.method._solver.gradient.execute = self.execute
+        if self.method._solver.gradient is not None:
+            self.method._solver.gradient.execute = self.execute
         # run the problem
         result = self.method.solve(self.problem)
 
@@ -238,9 +240,9 @@ def get_energy_evaluation_QLM(
             param_bindings = dict(zip(self._ansatz_params, parameter_sets.transpose().tolist())) # combine values to parameters symbols
             #print('param_bindings',param_bindings)
             sampled_expect_op = self._circuit_sampler.convert(expect_op, params=param_bindings)
-            #print('Qiskit result EE',np.real(sampled_expect_op.eval()))
+            print('Qiskit result EE',np.real(sampled_expect_op.eval()))
             means = np.real(create_and_run_job(self,reversed_operator, param_bindings)) #important to reverse the operator because of different conventions QLM/Qiskit
-            #print('QLM result EE',means)
+            print('QLM result EE',means)
             if self._callback is not None:
                 parameter_sets = np.reshape(parameters, (-1, num_parameters))
                 param_bindings = dict(zip(self._ansatz_params, parameter_sets.transpose().tolist()))
