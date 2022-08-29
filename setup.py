@@ -24,7 +24,7 @@ class PyTest(TestCommand):
 
 setup(
     name="neasqcvariational",
-    version="0.0.3",
+    version="0.0.4",
     python_requires='>=3.9',
     author="Arseny Kovyrshin, Giorgio Silvi",
     license="European Union Public License 1.2",
