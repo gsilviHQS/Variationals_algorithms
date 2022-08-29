@@ -21,8 +21,13 @@ from qiskit.compiler import transpile
 from qiskit_nature.algorithms import VQEUCCFactory,GroundStateEigensolver
 from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
 from qiskit.quantum_info import Pauli,SparsePauliOp
+from qiskit.circuit import ParameterExpression, ParameterVector
+from qiskit.opflow import ExpectationBase, CircuitSampler, PauliExpectation, OperatorStateFn, CircuitStateFn, PauliOp, ListOp, SummedOp,ComposedOp
+from qiskit.providers import BaseBackend, Backend
+from qiskit.utils import QuantumInstance
+
 import numpy as np
-from typing import List, Callable, Union
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 from qat.core import Observable,Result, Term
 from qat.plugins import Junction
 from qat.qlmaas.result import AsyncResult
@@ -176,6 +181,8 @@ def create_and_run_job(self,
                                             basis_gates=LIST_OF_GATES,
                                             optimization_level=0)
                 qcirc = qiskit_to_qlm(transpiled_circ)
+                print('Transp',transpiled_circ)
+                print('Circuit',qcirc)
                 job = qcirc.to_job(observable=Observable(operator_meas.num_qubits, matrix=operator_meas.to_matrix()),nbshots=self.nb_shots) 
                 # print('Shots= ',job.nbshots)
                 # START COMPUTATION
@@ -240,9 +247,9 @@ def get_energy_evaluation_QLM(
             param_bindings = dict(zip(self._ansatz_params, parameter_sets.transpose().tolist())) # combine values to parameters symbols
             #print('param_bindings',param_bindings)
             sampled_expect_op = self._circuit_sampler.convert(expect_op, params=param_bindings)
-            print('Qiskit result EE',np.real(sampled_expect_op.eval()))
+            # print('Qiskit result EE',np.real(sampled_expect_op.eval()))
             means = np.real(create_and_run_job(self,reversed_operator, param_bindings)) #important to reverse the operator because of different conventions QLM/Qiskit
-            print('QLM result EE',means)
+            # print('QLM result EE',means)
             if self._callback is not None:
                 parameter_sets = np.reshape(parameters, (-1, num_parameters))
                 param_bindings = dict(zip(self._ansatz_params, parameter_sets.transpose().tolist()))
@@ -259,3 +266,155 @@ def get_energy_evaluation_QLM(
             return energy_evaluation, expectation
 
         return energy_evaluation
+
+def extract_and_compute_circ(self, operator: OperatorBase,prev_coeff=1) -> None:
+            """
+            Recursively extract the ``CircuitStateFns`` contained in operator into the
+            ``_circuit_ops_cache`` field.
+            """
+            # print(operator,'vs',operator.coeff)
+            #print('Coeff',operator.coeff, type(operator))
+            if isinstance(operator, ComposedOp):
+               
+                coefficient = prev_coeff*operator.coeff
+                for i,op in enumerate(operator.oplist):
+                    if isinstance(op,CircuitStateFn):
+                        circuit = op.to_circuit_op()
+                        #coefficient*=op.coeff
+                    elif isinstance(op,OperatorStateFn):
+                        operator_to_run = op
+                        #coefficient*=op.coeff
+                    elif isinstance(op,ListOp):
+                        for op2 in op.oplist:
+                            if isinstance(op2,CircuitStateFn):
+                                circuit = op2.to_circuit_op()
+                                #coefficient*=op2.coeff
+                if circuit is not None and operator_to_run is not None:
+                    value = run_circuit_in_QLM(self,circuit,operator_to_run, coefficient)
+                    #print('Computed',value, 'with coefficient',coefficient)
+                return value
+                
+            elif isinstance(operator, SummedOp):
+                list_of_values=[]
+                coefficient = prev_coeff*operator.coeff
+                for i,op in enumerate(operator.oplist):
+                    list_of_values.append(extract_and_compute_circ(self, op,prev_coeff=coefficient))
+                summation= sum(list_of_values)
+                #print('Computed sum',summation)
+                return summation
+
+            elif isinstance(operator, ListOp):
+                list_of_values=[]
+                
+                coefficient = prev_coeff*operator.coeff
+                #print(coefficient)
+                for i,op in enumerate(operator.oplist):
+                    list_of_values.append(extract_and_compute_circ(self, op, prev_coeff=coefficient))
+                return list_of_values
+
+
+
+def run_circuit_in_QLM(self,circuit,operator, coefficient):
+
+    operator_pauli = operator._primitive.to_pauli_op()
+    operator_meas_inv = PauliOp(primitive= Pauli(operator_pauli.primitive.to_label()[::-1]), coeff=1)#operator_pauli.coeff)
+    transpiled_circ = transpile(circuit.to_circuit(),
+                            basis_gates=LIST_OF_GATES,
+                            optimization_level=0)
+    qcirc = qiskit_to_qlm(transpiled_circ)
+    job = qcirc.to_job(observable=Observable(operator_meas_inv.num_qubits, matrix=operator_meas_inv.to_matrix()),nbshots=self.nb_shots) 
+    result_temp = self.execute(job)
+    if isinstance(result_temp, AsyncResult):  # chek if we are dealing with remote job
+        #case for local plugin/remote qpu
+        result = result_temp.join()
+        
+    else:
+        result = result_temp
+    return coefficient * np.real(result.value)
+
+
+
+
+def gradient_wrapper_for_QLM(
+        self,
+        operator: OperatorBase,
+        bind_params: Union[ParameterExpression, ParameterVector, List[ParameterExpression]],
+        grad_params: Optional[
+            Union[
+                ParameterExpression,
+                ParameterVector,
+                List[ParameterExpression],
+                Tuple[ParameterExpression, ParameterExpression],
+                List[Tuple[ParameterExpression, ParameterExpression]],
+            ]
+        ] = None,
+        backend: Optional[Union[BaseBackend, Backend, QuantumInstance]] = None,
+        expectation: Optional[ExpectationBase] = None,
+    ) -> Callable[[Iterable], np.ndarray]:
+        """Get a callable function which provides the respective gradient, Hessian or QFI for given
+        parameter values. This callable can be used as gradient function for optimizers.
+
+        Args:
+            operator: The operator for which we want to get the gradient, Hessian or QFI.
+            bind_params: The operator parameters to which the parameter values are assigned.
+            grad_params: The parameters with respect to which we are taking the gradient, Hessian
+                or QFI. If grad_params = None, then grad_params = bind_params
+            backend: The quantum backend or QuantumInstance to use to evaluate the gradient,
+                Hessian or QFI.
+            expectation: The expectation converter to be used. If none is set then
+                `PauliExpectation()` is used.
+
+        Returns:
+            Function to compute a gradient, Hessian or QFI. The function
+            takes an iterable as argument which holds the parameter values.
+        """
+        from qiskit.opflow.converters import CircuitSampler
+
+
+        if not grad_params:
+            grad_params = bind_params
+
+        grad = self.convert(operator, grad_params)
+        if expectation is None:
+            expectation = PauliExpectation()
+        grad = expectation.convert(grad)
+        #print(grad)
+        #print('General operator',operator)
+        #print('bind_params',bind_params)
+
+
+        def gradient_fn(p_values):
+            p_values_dict = dict(zip(bind_params, p_values))
+            if not backend:
+                converter = grad.assign_parameters(p_values_dict)
+                return np.real(converter.eval())
+            else:
+                p_values_dict = {k: [v] for k, v in p_values_dict.items()} # remake the dict with list of values
+                # converter = grad.assign_parameters(p_values_dict) # assign the values to the parameters
+                #print(converter)
+                #converted_circ = expectation.convert(grad)
+                circuit_assigned = grad.assign_parameters(p_values_dict) # assign the values to the parameters
+                dictio = extract_and_compute_circ(self,circuit_assigned) 
+                #print('LIST',dictio[0], dictio[1])
+                
+                # set up the matrix here
+                val = dictio[1]
+                matrix = np.zeros((len(val),len(val)))
+                upper_w_diag = np.triu_indices(len(val))
+                matrix[upper_w_diag] = np.array(np.concatenate(val))
+                i_upper = np.triu_indices(len(val), 1)
+                i_lower = np.tril_indices(len(val), -1)
+                matrix[i_lower] = matrix[i_upper]
+
+                
+                converter = CircuitSampler(backend=backend).convert(grad, p_values_dict)
+                #print('Qiskit first 5 circuits',[op.eval() for op in converter[0][0][0].oplist])
+                #print('Qiskit first sums',[op.eval() for op in converter[0][0].oplist])
+                QLM_result = converter[0].combo_fn([dictio[0],matrix])
+                # print('QLM_result',QLM_result)
+                # print('Qiskit result',np.real(converter.eval()[0]))
+
+                return QLM_result
+                
+
+        return gradient_fn

@@ -6,3 +6,5 @@ __pycache__/
 neasqcvariational.egg-info/
 env/
 .vscode/
+misc/notebooks/Figs_august/*
+misc/notebooks/Figures/*
