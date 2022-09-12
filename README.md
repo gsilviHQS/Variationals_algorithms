@@ -15,7 +15,9 @@ These two repos are modified to include additional functionalities not present i
 Additionaly the conda enviroment install QLM libraries necessary to use QLM QPUs as backend.
 
 To install the conda environment run the following command:
-- source create_conda_env.sh
+```bash
+source create_conda_env.sh
+```
 
 Also, keep in mind that recently Github password authentication has been deprecated and will no longer work.
 Instead, token-based authentication (for example SSH Key) are required for all authenticated Git operations.
@@ -39,6 +41,13 @@ The custom junction also modifies the function to get the energy evaluation (and
 The modification converts each circuit from Qiskit to MyQLM and takes care of the job submission in the QLM framework.
 
 Overall, this Qiskit-QLM integration allows us to choose which type of backend to use, and when combined with the QLMaaS server, enables this code to run for larger problems and molecules, which would not be possible using a simple laptop.
+
+## Unittest
+To run the unittests, use the following command:
+```bash
+pytest tests/test_my_lib.py
+```
+
 
 ## Coding conventions
 

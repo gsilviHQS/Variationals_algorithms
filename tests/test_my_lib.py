@@ -31,7 +31,8 @@ from qiskit_mod.wrapper2myqlm import build_QLM_stack, run_QLM_stack
 from qiskit_mod.qiskit_ter import LinCombFullmod, LinCombMod, EvoVQE
 from qiskit_mod.qiskit_nat import VHA
 
-import pytest
+import numpy as np
+import unittest
 
 
 
@@ -188,7 +189,7 @@ class TestEvoVQE:
         vqe = EvoVQE(ansatz, optimizer=L_BFGS_B(), quantum_instance=quantum_instance)
         vqe.initial_point = preferred_init_points
         result = vqe.compute_evolve(q_elop, isteps=2, rsteps=2)
-        assert(result.eigenvalue==-1.1380348319173705+0j)
+        np.testing.assert_approx_equal(np.real(result.eigenvalue),-1.1380348319173705, 8, "not almost equal.")
 
 class TestIterativeExplorationVQE:
     """
@@ -245,7 +246,8 @@ class TestIterativeExplorationVQE:
         stack = build_QLM_stack(calc,
                                 molecule,
                                 IterativeExplorationVQE,
-                                qpu_local
+                                qpu_local,
+                                shots = 0
                                 )
         assert stack is not None
         res_qlm = run_QLM_stack(stack)
