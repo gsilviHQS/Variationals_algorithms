@@ -1,17 +1,18 @@
 #!/usr/bin/env python
-
+import os
+os.environ["TMPDIR"] = "/tmp"  # set the folder for temporary files
 import numpy as np
 
 import warnings
-warnings.simplefilter('ignore', np.RankWarning)
+warnings.simplefilter('ignore', category=FutureWarning)
 
 from qiskit_nature.drivers import UnitsType
 from qiskit_nature.drivers.second_quantization import PySCFDriver
 
-from qiskit_nat import TotalProblem
+from qiskit_mod.qiskit_nat import TotalProblem
 from qiskit_nature.converters.second_quantization import QubitConverter
 from qiskit_nature.mappers.second_quantization import JordanWignerMapper
-from qiskit_nat import MixedMapper
+from qiskit_mod.qiskit_nat import MixedMapper
 
 driver = PySCFDriver(atom="H .0 .0 .0; H .0 .0 0.735", charge=0, spin=0, unit=UnitsType.ANGSTROM, basis='sto3g')
 
@@ -62,7 +63,7 @@ num_c     = nuc_n@nuc_n+el_n@el_n - 4.0*nuc_n - 4.0*el_n + 8.0*I.tensorpower(8)
 print("Reference Energy=> ",-1.0537650432)
 
 # setup the initial state for the ansatz
-from qiskit_nat import NeoHartreeFock
+from qiskit_mod.qiskit_nat import NeoHartreeFock
 
 init_state = NeoHartreeFock(2*num_spin_orbitals, mixnum_particles, converter)
 

@@ -1,17 +1,18 @@
 #!/usr/bin/env python
-
+import os
+os.environ["TMPDIR"] = "/tmp"  # set the folder for temporary files
 import numpy as np
 
 import warnings
-warnings.simplefilter('ignore', np.RankWarning)
+warnings.simplefilter('ignore', category=FutureWarning)
 
 from qiskit_nature.drivers import UnitsType
 from qiskit_nature.drivers.second_quantization import PySCFDriver
 
-from qiskit_nat import TotalProblem
+from qiskit_mod.qiskit_nat import TotalProblem
 from qiskit_nature.converters.second_quantization import QubitConverter
 from qiskit_nature.mappers.second_quantization import JordanWignerMapper
-from qiskit_nat import MixedMapper
+from qiskit_mod.qiskit_nat import MixedMapper
 
 driver = PySCFDriver(atom="H .0 .0 .0; H .0 .0 0.735", charge=0, spin=0, unit=UnitsType.ANGSTROM, basis='sto3g')
 
@@ -61,7 +62,7 @@ num_c     = nuc_n@nuc_n+el_n@el_n - 4.0*nuc_n - 4.0*el_n + 8.0*I.tensorpower(8)
 print("Reference Energy=> ",-1.0537650432)
 
 # setup the initial state for the ansatz
-from qiskit_nat import NeoHartreeFock
+from qiskit_mod.qiskit_nat import NeoHartreeFock
 
 init_state = NeoHartreeFock(2*num_spin_orbitals, mixnum_particles, converter)
 
@@ -88,7 +89,7 @@ qinstance = QuantumInstance(Aer.get_backend('statevector_simulator'), shots=1, s
                                                    seed_transpiler=2, backend_options=be_options)
 #qinstance = QuantumInstance(Aer.get_backend('aer_simulator_statevector_gpu'), shots=1, seed_simulator=2, seed_transpiler=2)
 
-from qiskit_ter import LinCombFullmod,LinCombMod, EvoVQE
+from qiskit_mod.qiskit_ter import LinCombFullmod,LinCombMod, EvoVQE
 vqe = EvoVQE(ansatz, optimizer=optimizer, quantum_instance=qinstance)
 
 #vqe.initial_point = [6.,0.,4.,0.,0.,-3.,2.,3.,2.,0.,3.,-6.,-3.,6.,-2.,-0.,2.,0.,-2.,4.,-0.,0.,-6.,-6.,-4.,-3.,3.,-3.,3.,6.,-5.,0.,0.,4.,0.,-4.,3.,-6.,0.,3.,-5.,0.,-4.,0.,2.,0.,-4.,-3.]

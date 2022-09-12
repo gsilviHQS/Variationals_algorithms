@@ -1,6 +1,7 @@
-# NEASQC lib template
+# NEASQC repo Variatonal Algorithms
 
-This repository is a template for NEASQC libraries.
+This repositorycollects Python scripts and Jupyter notebooks that allow the user to test different variational algorithms. It contains our custom functions (e.g. VHA ansatz, PBO Hamiltonian)
+that are built upon Qiskit libraries.
 
 ## Licence
 
@@ -9,15 +10,35 @@ The `LICENCE` file contains the default licence statement as specified in the pr
 ## Building and installing
 
 To run the code in the repo a setup to build the conda environment is provided. 
-It install python 3.9, qiksit-aer (0.8.2), and the two repos here in NEASQC: qiskit-nature and qiskit-terra.
+It install python 3.9, qiksit libraries, and the two mods to the following library: qiskit-nature and qiskit-terra.
 These two repos are modified to include additional functionalities not present in the standard qiskit libraries.
-Additionaly the conda enviroment install matplotlib (for plots) and ipykernel (to use jupyter notebooks).
+Additionaly the conda enviroment install QLM libraries necessary to use QLM QPUs as backend.
 
 To install the conda environment run the following command:
 - source create_conda_env.sh
 
 Also, keep in mind that recently Github password authentication has been deprecated and will no longer work.
 Instead, token-based authentication (for example SSH Key) are required for all authenticated Git operations.
+
+## Running the code
+You can find Jupyter notebook and python scripts in misc folder.
+Use the conda environment to run the code.
+
+
+## QLM interoperatibility explained
+The code in the repository is mainly written using the Qiskit library. To be able to run the circuits onto QLM quantum processing units (QPUs), we integrated the myqlm-interop library which enables the conversion of Qiskit circuits to QLM circuits (as well as the opposite).
+Additionally, the library allows wrapping QLM QPUs onto a Qiskit`s quantum instance. This allows for easy and simple integration of QPUs as backends to run the circuits. 
+This feature wraps each circuit and observable into a QLM job that is submitted to either the local or remote QLM QPU.
+Unfortunately, this implementation suffers from a big overhead due to the time associated with job submissions, result retrieval, and, possibly, queue waiting times.
+
+For this reason, to minimize the overhead, we decided to use the custom plugin framework of MyQLM. In particular, we build a custom junction that is capable of handling multiple circuits runs onto a single job submission, as well as all the classical computations associated.
+The same custom junction is uploaded to the QLM server to be available from the QLMaaS library when the remote connection is established.
+
+The custom junction gets the various methods tested in the repository as input. All methods require multiple jobs to run for various circuits and the junction framework can handle them within a single submission to minimize overhead time. 
+The custom junction also modifies the function to get the energy evaluation (and gradient) inside the Qiskit solver. 
+The modification converts each circuit from Qiskit to MyQLM and takes care of the job submission in the QLM framework.
+
+Overall, this Qiskit-QLM integration allows us to choose which type of backend to use, and when combined with the QLMaaS server, enables this code to run for larger problems and molecules, which would not be possible using a simple laptop.
 
 ## Coding conventions
 

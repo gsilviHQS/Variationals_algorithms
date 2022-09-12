@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-
+import os
+os.environ["TMPDIR"] = "/tmp"  # set the folder for temporary files
 import numpy as np
 
 import warnings
-warnings.simplefilter('ignore', np.RankWarning)
+warnings.simplefilter('ignore', category=FutureWarning)
 
 from qiskit_nature.drivers import Molecule, UnitsType
 from qiskit_nature.drivers.second_quantization import PySCFDriver, GaussianForcesDriver
@@ -44,7 +45,7 @@ from qiskit.algorithms.optimizers import L_BFGS_B, CG
 optimizer = L_BFGS_B()
 
 # setup and run VQE
-from qiskit_ter import LinCombFullmod,LinCombMod, EvoVQE
+from qiskit_mod.qiskit_ter import LinCombFullmod,LinCombMod, EvoVQE
 
 # set the backend for the quantum computation
 from qiskit.utils import QuantumInstance
