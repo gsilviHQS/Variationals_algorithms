@@ -42,10 +42,12 @@ The modification converts each circuit from Qiskit to MyQLM and takes care of th
 
 Overall, this Qiskit-QLM integration allows us to choose which type of backend to use, and when combined with the QLMaaS server, enables this code to run for larger problems and molecules, which would not be possible using a simple laptop.
 
-## Unittest
-To run the unittests, use the following command:
+## Testing and continuous integration
+
+You can run the tests with:
+
 ```bash
-pytest tests/test_my_lib.py
+python setup.py test
 ```
 
 
@@ -70,30 +72,8 @@ pylint --rcfile=./misc/pylint.rc <my_source_dir>
 
 depending on how you installed pylint.
 
-## Testing and continuous integration
 
-In order to uniformise the continuous integration process across libraries, we will assume that:
-- all the tests related to your library are compatible with pytest
-- there exists a 'test' recipe in the `setup.py` file
 
-The default test recipe (in this template) simply calls pytest on the full repository.
-Pytest detects:
-- any file that starts with test\_ (e.g test\_my\_class.py)
-- inside these files, any function that starts test\_
-- any class that starts with Test
-
-You can run it with:
-
-```bash
-python setup.py test
-```
-
-This way, you can write tests either right next to the corresponding code (convenient) or in a `tests` folder at the root of the repository.
-
-If you are not familiar with unit testing and you feel that it's too much for your project, that's fine.
-The bare minimum would be to include some run examples wrapped in test functions (functional tests).
-
-Remark that in this template, the same tests are in my\_lib/test\_my\_lib.py and tests/test\_my\_lib.py.
 
 ## GitHub CI
 This repository contains a GitHub Workflow file that will automatically run pytest when changes are pushed.  

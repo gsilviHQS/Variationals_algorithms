@@ -19,7 +19,7 @@ class PyTest(TestCommand):
 
     def run_tests(self):
         import pytest
-        errno = pytest.main([".", "-vv"])
+        errno = pytest.main(["./tests", "-vv"])
         sys.exit(errno)
 
 setup(
