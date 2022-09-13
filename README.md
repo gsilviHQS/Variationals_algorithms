@@ -1,53 +1,53 @@
-# NEASQC repo Variatonal Algorithms
+# NEASQC repo Variational Algorithms
 
-This repositorycollects Python scripts and Jupyter notebooks that allow the user to test different variational algorithms. It contains our custom functions (e.g. VHA ansatz, PBO Hamiltonian)
+This repository collects Python scripts and Jupyter notebooks that allow the user to test different variational algorithms. It contains our custom functions (e.g. VHA ansatz, PBO Hamiltonian)
 that are built upon Qiskit libraries.
 
 The repository is organized as follows:
-- **misc**  contain the notebooks and scripts that showcase the variational algorithms
-- **qiskit_mod** contains our custom functions that are built upon Qiskit libraries as well as the QLM custom junction and helpers:
-    - **qiskit_nat** the customize function built upon qiskit_nature
-    - **qiskit_ter** the customize function built upon qiskit_terra
-    - *my_junction.py* the QLM custom junction used to run the variational algorithms with QLM backends
-    - *uploader_junction.py* helper to upload the junction to QLMaaS server, so that it can be found in the remote library
-    - *wrapper2myqlm.py* helper to wrap the variational algorithms using QLM stack
-- **tests** unit tests for the variational algorithms
-- **QLMtools** additional tools to upload qiskit_mod to QLMaaS server
-    - *uploader_library.py* helper to upload the qiskit_mod library to QLMaaS server
-- *create_conda_env.sh* script to create a conda environment with all required libraries
-- *environment.yml* conda environment file
-- *setup.py* setup file to install the qiskit_mod library and with unittest reciper to run the unit tests
+- **misc**:  contains the notebooks and scripts that showcase the variational algorithms
+- **qiskit_mod**: contains our custom functions that are built upon Qiskit libraries as well as the QLM custom junction and helpers:
+    - **qiskit_nat**: the customize function built upon qiskit_nature
+    - **qiskit_ter**: the customize function built upon qiskit_terra
+    - *my_junction.py*: the QLM custom junction used to run the variational algorithms with QLM backends
+    - *uploader_junction.py*: helper to upload the junction to the QLMaaS server so that it can be found in the remote library
+    - *wrapper2myqlm.py*: helper to wrap the variational algorithms using QLM stack
+- **tests**: unit tests for the variational algorithms
+- **QLMtools**: additional tools to upload qiskit_mod to the QLMaaS server
+    - *uploader_library.py*: helper to upload the qiskit_mod library to the QLMaaS server
+- *create_conda_env.sh*: script to create a Conda environment with all required libraries
+- *environment.yml*: Conda environment file
+- *setup.py*: setup file to install the qiskit_mod library and with unit test recipe to run the unit tests
 ## Licence
 
 The `LICENCE` file contains the default licence statement as specified in the proposal and partner agreement.
 
 ## Building and installing
 
-To run the code in the repo a setup to build the conda environment is provided. 
-It install python 3.9, qiksit libraries, and the two mods to the following library: qiskit-nature and qiskit-terra.
+To run the code in the repo a setup to build the Conda environment is provided. 
+It installs python 3.9, qiskit libraries, and our two qiskit mods on top of the following library: qiskit-nature and qiskit-terra.
 These two repos are modified to include additional functionalities not present in the standard qiskit libraries.
-Additionaly the conda enviroment install QLM libraries necessary to use QLM QPUs as backend.
+Additionally, the Conda environment installs QLM libraries necessary to use QLM QPUs as backends.
 
-To install the conda environment and our qiskit_mod library, run the following command:
+To install the Conda environment and our qiskit_mod library, run the following command:
 ```bash
 source create_conda_env.sh
 ```
 
 Also, keep in mind that recently Github password authentication has been deprecated and will no longer work.
-Instead, token-based authentication (for example SSH Key) are required for all authenticated Git operations.
+Instead, token-based authentication (for example SSH Key) is required for all authenticated Git operations.
 
 ## Running the code
-You can find Jupyter notebook and python scripts in misc folder.
-Use the conda environment to run the code.
+You can find the Jupyter notebook and python scripts in the **misc** folder.
+Use the Conda environment provided to run the code.
 
 
-## QLM interoperatibility explained
+## QLM interoperability explained
 The code in the repository is mainly written using the Qiskit library. To be able to run the circuits onto QLM quantum processing units (QPUs), we integrated the myqlm-interop library which enables the conversion of Qiskit circuits to QLM circuits (as well as the opposite).
 Additionally, the library allows wrapping QLM QPUs onto a Qiskit`s quantum instance. This allows for easy and simple integration of QPUs as backends to run the circuits. 
 This feature wraps each circuit and observable into a QLM job that is submitted to either the local or remote QLM QPU.
 Unfortunately, this implementation suffers from a big overhead due to the time associated with job submissions, result retrieval, and, possibly, queue waiting times.
 
-For this reason, to minimize the overhead, we decided to use the custom plugin framework of MyQLM. In particular, we build a custom junction that is capable of handling multiple circuits runs onto a single job submission, as well as all the classical computations associated.
+For this reason, to minimize the overhead, we decided to use the custom plugin framework of MyQLM. In particular, we build a custom junction that is capable of handling multiple circuit runs onto a single job submission, as well as all the classical computations associated.
 The same custom junction is uploaded to the QLM server to be available from the QLMaaS library when the remote connection is established.
 
 The custom junction gets the various methods tested in the repository as input. All methods require multiple jobs to run for various circuits and the junction framework can handle them within a single submission to minimize overhead time. 
