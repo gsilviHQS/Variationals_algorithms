@@ -8,3 +8,4 @@ env/
 .vscode/
 misc/notebooks/Figs_august/*
 misc/notebooks/Figures/*
+QLMtools/package_installer.py

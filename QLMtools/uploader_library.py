@@ -57,25 +57,7 @@ class Uploader(metaclass=MetaLocalPlugin):
         print("Starting upload and updating the remote configuration")
         result = plugin.compile(Batch(), HardwareSpecs()) #  Compile the plugin, this will trigger the copy of the files
         print("Updating remote configuration (to publish the code)...")
-        # connection = QLMaaSConnection() #  Create the connection
-        # new_paths = [self.path] #  Create the new paths
-        # new_modules = [] #  Create the new modules
-        # for fname in self.files: #  For each file
-        #     module_name = fname.replace(".py", "").replace("./", "") #  Get the module name, removing the extension
-        #     new_modules.append(module_name) #  Add the module name to the list
-        # print(">> uploading new configuration")
-        # connection.update_config(new_paths, new_modules, False) #  Update the configuration, this will publish the code
-        # print("Checking if the upload finished")
-        # result.join() #  Wait for the upload to finish
-        # print("Done!")
-        # config = connection.get_config() #  Get the configuration
-        # new_paths = list(set(config.paths)) #  Get the new paths
-        # new_modules = list(set(config.modules)) #  Get the new modules  
-        # connection.update_config(new_paths, new_modules, True) #  Update the configuration, this will publish the code
-        # import os
-        # # os.system("python3 -m pip list")
-        # # os.system("python3 --version")
-        # print(f"The new configuration is:\n{connection.get_config()}")
+
 
 import os
 import itertools
@@ -83,10 +65,7 @@ path1 = "../qiskit_mod/qiskit_nat/"
 path2 = "../qiskit_mod/qiskit_ter/"
 
 paths = [path1, path2]
-# for (dirpath, dirnames, filenames) in itertools.chain.from_iterable(os.walk(path) for path in paths):
-#     print(dirpath)
-#     filenames = [dirpath + s for s in filenames]
-#     f.extend(filenames)
+
 for path in paths:
     f = []
     for item in os.listdir(path):

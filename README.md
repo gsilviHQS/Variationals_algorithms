@@ -4,15 +4,16 @@ This repositorycollects Python scripts and Jupyter notebooks that allow the user
 that are built upon Qiskit libraries.
 
 The repository is organized as follows:
-- 'misc' folder contain the notebooks and scripts that showcase the variational algorithms
-- 'qiskit_mod' contains our custom functions that are built upon Qiskit libraries as well as the QLM custom junction and helpers:
-    - 'qiskit_nat' the customize function built upon qiskit_nature
-    - 'qiskit_ter' the customize function built upon qiskit_terra
-    - 'my_junction.py' the QLM custom junction used to run the variational algorithms with QLM backends
-    - 'uploader_junction.py' helper to upload the junction to QLMaaS server, so that it can be found in the remote library
-    - 'wrapper2myqlm.py' helper to wrap the variational algorithms using QLM stack
-- 'tests' unit tests for the variational algorithms
-
+- **misc**  contain the notebooks and scripts that showcase the variational algorithms
+- **qiskit_mod** contains our custom functions that are built upon Qiskit libraries as well as the QLM custom junction and helpers:
+    - **qiskit_nat** the customize function built upon qiskit_nature
+    - **qiskit_ter** the customize function built upon qiskit_terra
+    - *my_junction.py* the QLM custom junction used to run the variational algorithms with QLM backends
+    - *uploader_junction.py* helper to upload the junction to QLMaaS server, so that it can be found in the remote library
+    - *wrapper2myqlm.py* helper to wrap the variational algorithms using QLM stack
+- **tests** unit tests for the variational algorithms
+- **QLMtools** additional tools to upload qiskit_mod to QLMaaS server
+    - *uploader_library.py* helper to upload the qiskit_mod library to QLMaaS server
 ## Licence
 
 The `LICENCE` file contains the default licence statement as specified in the proposal and partner agreement.
