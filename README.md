@@ -14,6 +14,9 @@ The repository is organized as follows:
 - **tests** unit tests for the variational algorithms
 - **QLMtools** additional tools to upload qiskit_mod to QLMaaS server
     - *uploader_library.py* helper to upload the qiskit_mod library to QLMaaS server
+- *create_conda_env.sh* script to create a conda environment with all required libraries
+- *environment.yml* conda environment file
+- *setup.py* setup file to install the qiskit_mod library and with unittest reciper to run the unit tests
 ## Licence
 
 The `LICENCE` file contains the default licence statement as specified in the proposal and partner agreement.
@@ -25,7 +28,7 @@ It install python 3.9, qiksit libraries, and the two mods to the following libra
 These two repos are modified to include additional functionalities not present in the standard qiskit libraries.
 Additionaly the conda enviroment install QLM libraries necessary to use QLM QPUs as backend.
 
-To install the conda environment run the following command:
+To install the conda environment and our qiskit_mod library, run the following command:
 ```bash
 source create_conda_env.sh
 ```
