@@ -41,6 +41,17 @@ You can find the Jupyter notebook and python scripts in the **misc** folder.
 Use the Conda environment provided to run the code.
 
 
+## Enhanced Sampling
+In this repo, we're exploring the simulation of quantum circuits using enhanced sampling methods that uses Bayesian inference to reduce the number of measurement, the algorithm is taken from [Minimizing estimation runtime on noisy quantum computers](https://arxiv.org/abs/2006.09350). The goal is to estimate the expectation values of a Hamiltonian operator on a given quantum state, which is a common task in many quantum algorithms.
+
+We implement the non-adaptive version of the algorithm outlined in the paper to carry out Bayesian inference. The reasoning for the using the non-adaptive is to have a much faster algorithm where the parameters of the ansatz circuit are not-updated at every shot.
+
+In the folder misc/notebook/ one can find an example of the algorithm in the notebook EnhancedSamplingExample.ipynb. In it, a generic hamiltonian is built to be used to compare the energy evaluation on a SU2 ansatz using the algorithm outlined (enhanced sampling) vs the more traditional approac (frequentist).
+
+![Frequentist vs Enhanced schema](doc/SamplingSchema.png)
+
+
+
 ## QLM interoperability explained
 The code in the repository is mainly written using the Qiskit library. To be able to run the circuits onto QLM quantum processing units (QPUs), we integrated the myqlm-interop library which enables the conversion of Qiskit circuits to QLM circuits (as well as the opposite).
 Additionally, the library allows wrapping QLM QPUs onto a Qiskit`s quantum instance. This allows for easy and simple integration of QPUs as backends to run the circuits. 

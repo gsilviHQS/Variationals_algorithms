@@ -8,11 +8,12 @@ from qiskit.quantum_info import Pauli
 from qiskit.opflow import MatrixOp, StateFn, PauliExpectation, PrimitiveOp, PauliOp
 from qiskit.opflow.state_fns import CircuitStateFn
 from qiskit.opflow.converters import CircuitSampler
-
+from qiskit import transpile
 import numpy as np
 import scipy
+from scipy import stats
 import matplotlib.pyplot as plt
-import collections
+from collections import OrderedDict, defaultdict
 import functools
 from scipy.optimize import curve_fit
 
@@ -34,6 +35,7 @@ class EnhancedSampler():
         x_angles: Optional[np.ndarray] = None,
         binning_range: Tuple[float, float] = (-1, 1),
         binning_points: int = 10000,
+        random_seed: Optional[int] = None,
     ) -> None:
         """
         Initialize the Enhanced sampling module.
@@ -42,30 +44,36 @@ class EnhancedSampler():
             Hamiltonian: the Hamiltonian to sample.
             Layers: the layers of the circuit to use to sample.
             ansatz: the ansatz to use.
-            x_angles: the initial angles for the ansatz.
+            x_angles: the initial angles for the generalized rotations.
             binning_range: the range for the binning arrays.
             binning_points: the number of points in the binning arrays.
+            random_seed: Seed for random number generator for reproducibility.
         """
         # Make circuits
         self._hamiltonian = Hamiltonian
         self._num_qubits = Hamiltonian.num_qubits
-        print('num qubits',self._num_qubits)
         self._layers = Layers
-        if ansatz.num_parameters == 0:
-            self._ansatz = ansatz
-        else:
-            print("Ansatz with parameters not set, setting it random")
-            seed(44)
-            angles_set = {par: random()*2*pi for par in ansatz.ordered_parameters}
-            print(angles_set)
+
+        if ansatz.num_parameters != 0:
+            print("Ansatz with parameters not set, setting it random:",angles_set)
+            np.random.seed(random_seed) # for reproducibility
+            angles_set = {par: np.random.uniform(0, 2*np.pi) for par in ansatz.ordered_parameters}
             self._ansatz = ansatz.bind_parameters(angles_set)
+        else:
+            self._ansatz = ansatz
 
         self._binning_points = binning_points
-        self._x_angles = x_angles or np.ones(2 * Layers) * np.pi / 2
+
+        # If no angles for the generalized rotations are provided, we initialize them to pi / 2
+        if x_angles is None:
+            self._x_angles = np.ones(2 * self._layers) * np.pi / 2
+        else:
+            self._x_angles = x_angles
 
         binning_start, binning_end = binning_range
         self._binning = np.linspace(binning_start, binning_end, self._binning_points)
         self._binning_theta = np.linspace(0, np.pi, self._binning_points)
+
 
     def eval(self,
              pre_energy_freq: Dict[str, Dict[int, Dict[int, float]]],
@@ -75,96 +83,56 @@ class EnhancedSampler():
              steps: int = 1,
              steps_pre: int = 1,
              ) -> Tuple[Dict[str, Dict[int, Dict[int, float]]], Dict[str, Dict[int, Dict[int, float]]]]:
-        # Save the standard x angles and layers
+        
+        # Initialization
         standard_x_angles = self._x_angles
         standard_layers = self._layers
-        # Create empty dictionaries for the likelihood, fitted energy, and fitted variance
-        likelihood = {}
-        fit_energy = {}
-        fit_variance = {}
-
-        # Loop through each part of the Hamiltonian
+        fit_energy = defaultdict(lambda: defaultdict(dict))
+        fit_variance = defaultdict(lambda: defaultdict(dict))
+        circuit_sampler = CircuitSampler(backend=q_instance_post, attach_results=True)
+        
         for H_part in self._hamiltonian.to_pauli_op():
-            # Convert the Hamiltonian part to a string
             primitive = str(H_part)
             print("\n\nSampling for", primitive, "...")
-            # Create empty dictionaries for the fitted energy and variance for this Hamiltonian part
-            fit_energy[primitive] = {}
-            fit_variance[primitive] = {}
-            for step in range(steps):
-                fit_energy[primitive][step] = {}
-                fit_variance[primitive][step] = {}
 
-            # Reset the x angles and layers to the standard values
-            self._x_angles = standard_x_angles
+            self._x_angles = standard_x_angles.copy()
             self._layers = standard_layers
 
-            # Loop through each repetition, useful for averaging plots, but not really necessary in practice
-            
             for rep in range(repetitions):
-                # Convert the pre-sampled energy frequency and standard deviation frequency to Theta
-                start_time = time.time()
                 self.convert_to_Theta(pre_energy_freq[primitive][steps_pre - 1][rep],
                                       std_dev_freq[primitive][steps_pre - 1][rep])
 
-                # Compute the likelihood and Fisher information for the initial theta values
-                if rep == 0:
-                    likelihood_0, likelihood_1, ket_A = self._compute_likelihood(H_part)
-
+                likelihood_0, likelihood_1, ket_A = self._compute_likelihood(H_part)
                 f_info_A = self.FischerInfo(self._initial_theta, ket_A)
 
-                
-
-                # Check if using 1 layer less results in a higher Fisher information
                 if self._layers > 1:
                     self._layers -= 1
                     self._x_angles = self._x_angles[:-2]
-                    if rep == 0:  # only compute likelihood if it hasn't been computed yet
-                        likelihood_0_B, likelihood_1_B, ket_B = self._compute_likelihood(H_part)
+                    likelihood_0_B, likelihood_1_B, ket_B = self._compute_likelihood(H_part)
                     f_info_B = self.FischerInfo(self._initial_theta, ket_B)
 
-                    # Use the alternative circuit if it results in a higher Fisher information
-                    if f_info_A >= f_info_B:
-                        self._layers = standard_layers
-                        self._x_angles = standard_x_angles
-                        likelihood[0] = likelihood_0
-                        likelihood[1] = likelihood_1
+                    if f_info_A < f_info_B:
+                        print('Using alternative circuit')
+                        likelihood_0, likelihood_1 = likelihood_0_B, likelihood_1_B
                     else:
-                        print(' use alternative circuit')
-                        likelihood[0] = likelihood_0_B
-                        likelihood[1] = likelihood_1_B
-                else:
-                    likelihood[0] = likelihood_0
-                    likelihood[1] = likelihood_1
+                        self._layers = standard_layers
+                        self._x_angles = standard_x_angles.copy()
 
-                # Create the enhanced sampling circuit
-                circuit = self.make_enhanced_circuit(H_part)  # TODO: check if it can be moved outside the loop
-                end_time = time.time()
-                print('Time pre-sampling:', end_time - start_time)
-                # Initialize the outcomes dictionary
+                likelihood = {0: likelihood_0, 1: likelihood_1}
+
+                circuit = self.make_enhanced_circuit(H_part, q_instance_post)
                 outcomes = {0: 0, 1: 0}
-                # Loop through each step
-                start_time = time.time()
                 for step in range(steps):
-                    # Sample from the enhanced sampling circuit and update the outcomes
-                    # at each step new outcomes are added to the dictionary
-                    sampler_enhanced = CircuitSampler(backend=q_instance_post, attach_results=True).convert(circuit)
+                    sampler_enhanced = circuit_sampler.convert(circuit)
                     outcomes = self.collect_events(sampler_enhanced, outcomes)
-                    # Compute the fitted energy and variance for this step
                     energy, variance = self.compute_posterior(outcomes, likelihood)
                     fit_energy[primitive][step][rep] = energy
                     fit_variance[primitive][step][rep] = variance
-                    # Divide the fitted energy and variance by the number of repetitions
-                    # for step in range(steps):
-                    #     fit_energy[primitive][step] /= repetitions
-                    #     fit_variance[primitive][step] /= repetitions
-                end_time = time.time()
-                print('Time sampling:', end_time - start_time)
 
-        # Return the fitted energy and variance dictionaries
         return fit_energy, fit_variance
 
-    def make_enhanced_circuit(self, Pauli_H):
+
+    def make_enhanced_circuit(self, Pauli_H, quantum_instance):
         # Get the inverse of the ansatz
         ansz_inverse = self._ansatz.inverse()
         # Set the phase flip operator
@@ -188,6 +156,9 @@ class EnhancedSampler():
                 circuit.append(MatrixOp(R0_gate), list_of_qubits)
                 circuit.append(self._ansatz, list_of_qubits)
 
+        # Transpile the circuit for optimization
+        circuit = transpile(circuit, backend=quantum_instance.backend)
+
         # Compute the projection operator for the Hamiltonian
         proj_H_m = (PauliOp(Pauli('I' * self._num_qubits), coeff=1.0) - Pauli_H) / 2
 
@@ -201,28 +172,30 @@ class EnhancedSampler():
         return expectation_m
 
     def compute_posterior(self, outcomes, likelihood):
+        """
+        Compute the posterior distribution for theta and then estimate energy and variance.
+
+        Args:
+            outcomes: Dictionary of collected events.
+            likelihood: Likelihood for the events.
+
+        Returns:
+            fit_energy: Fitted energy value.
+            fit_variance: Fitted variance value.
+        """
+
         # Compute the posterior distribution for theta
-        print("\n\n NEW FIT")
         def get_posterior(likelihood, f_prior):
             estimate = sum(likelihood * f_prior)
             return (likelihood * f_prior) / estimate
 
         prior_theta = self._initial_prior_theta
-        outcomes0 = outcomes[0]
-        outcomes1 = outcomes[1]
-        for _ in range(outcomes[0]+outcomes[1]):
-            for outcome in [0,1]:
-                if outcome == 0 and outcomes0 > 0:
-                    outcomes0-=1
-                    prior_theta = get_posterior(likelihood[outcome], prior_theta)
-                elif outcome == 1 and outcomes1 > 0:
-                    prior_theta = get_posterior(likelihood[outcome], prior_theta)
-                    outcomes1-=1
 
-
-        # for state, samples in outcomes.items(): #state can be 0 or 1, samples is the number of times 0 or 1 was measured
-        #     for _ in range(samples):  # update the prior_theta for each sample, 
-        #         prior_theta = get_posterior(likelihood[state], prior_theta)
+        for _ in range(sum(outcomes.values())):
+            for outcome in outcomes.keys():
+                if outcomes[outcome] > 0:
+                    prior_theta = get_posterior(likelihood[outcome], prior_theta)
+                    outcomes[outcome] -= 1
 
         self._final_prior_theta = prior_theta
 
@@ -237,50 +210,24 @@ class EnhancedSampler():
         
         # Set dynamic initial guess for amplitude
         amplitude_guess = np.max(prior_theta)
-        
 
- 
-        print('Outcomes:', outcomes)
-        if False:
-            plt.plot(self._restricted_binning_theta, self._initial_prior_theta, label='initial prior')
-            plt.plot(self._restricted_binning_theta, self._final_prior_theta, label='final prior')
-            # plt.plot(self._restricted_binning_theta, likelihood[0], label='likelihood 0 with n outcomes'+str(outcomes[0]))
-            # plt.plot(self._restricted_binning_theta, likelihood[1], label='likelihood 1 with n outcomes'+str(outcomes[1]))
-            plt.legend()
-            plt.show()
-        # which is the same as
-        
-        
-        
-        print("Guesses: amp, mean and std_dev:",amplitude_guess, mean_guess, std_dev_guess)
-        
+        print("Guesses: amplitude, mean, std_dev:", amplitude_guess, mean_guess, std_dev_guess)
 
         # Fit the theta distribution to a Gaussian
         try:
-            popt, _ = curve_fit(gaussian_function, 
-                                self._restricted_binning_theta, 
-                                prior_theta, 
+            popt, _ = curve_fit(gaussian_function, self._restricted_binning_theta, prior_theta, 
                                 p0=[amplitude_guess, mean_guess, std_dev_guess])
             _, theta_fit, sigma_fit = popt
-            print('FIT SUCCESS: Converged with popt:', popt)
+            print('Fit successful: Converged with popt:', popt)
         except RuntimeError:
-            # plot the prior_theta
-            print('\033[91m' + 'FIT ERROR: Failde to converge' + '\033[0m') # to make it red, use 
-            plt.plot(self._restricted_binning_theta, self._initial_prior_theta, label='initial prior')
-            plt.plot(self._restricted_binning_theta, self._final_prior_theta, label='final prior')
-            plt.legend()
-            plt.show()
-            
+            print('\033[91m' + 'Fit error: Failed to converge' + '\033[0m')
             theta_fit, sigma_fit = mean_guess, std_dev_guess
-
-
-        # self._theta_fit = theta_fit
-        # self._sigma_fit = sigma_fit
 
         # Convert the fitted theta values to energy
         fit_energy, fit_variance = self._convert_to_energy(theta_fit, sigma_fit)
 
         return fit_energy, fit_variance
+
 
     def _convert_to_energy(self, mu, sigma):
         # Convert the mean and standard deviation of the theta distribution to energy
@@ -290,17 +237,17 @@ class EnhancedSampler():
 
     def convert_to_Theta(self, initial_mean, initial_std_dev) -> None:
         # Compute initial distribution and sample from it
-        initial_distribution = scipy.stats.norm.pdf(self._binning, initial_mean, initial_std_dev)
+        initial_distribution = stats.norm.pdf(self._binning, initial_mean, initial_std_dev)
         s = np.arccos(np.random.normal(initial_mean, initial_std_dev, self._binning_points * 100))
 
         # Compute initial prior for theta
-        (initial_theta, initial_sigma) = scipy.stats.norm.fit([x for x in s if str(x) != 'nan'])
+        (initial_theta, initial_sigma) = stats.norm.fit([x for x in s if str(x) != 'nan'])
         if initial_sigma ** 2 > 0.01:
             print("WARNING: Large variance")
-        initial_prior = scipy.stats.norm.pdf(self._binning_theta, initial_theta, initial_sigma)
+        initial_prior = stats.norm.pdf(self._binning_theta, initial_theta, initial_sigma)
         # limit the initial prior to the region of interest, i.e. from - 4 sigma to + 4 sigma
         self._binning_bounds = [np.argmax(initial_prior) - 4 * int(initial_sigma * self._binning_points), np.argmax(initial_prior) + 4 * int(initial_sigma * self._binning_points)]
-        print("Initial prior bounds:", self._binning_bounds)
+        # print("Initial prior bounds:", self._binning_bounds)
         initial_prior = initial_prior[self._binning_bounds[0]:self._binning_bounds[1]]
         initial_prior /= sum(initial_prior)
         self._restricted_binning_theta = self._binning_theta[self._binning_bounds[0]:self._binning_bounds[1]]
@@ -340,7 +287,7 @@ class EnhancedSampler():
             # Evaluate the operator on the binary value to determine the state
             state = np.real(operator_in_use.eval(binary_value))
             outcomes_dict[state] += item
-        print("Outcomes",outcomes_dict)
+        # print("Outcomes",outcomes_dict)
         return outcomes_dict
 
     def _redefineBasis(self, Pauli_H):
@@ -386,8 +333,8 @@ class EnhancedSampler():
         gate_array[2 * num_layers] = self._new_P(theta_angle).to_matrix()
         gate_array_derivative[2 * num_layers] = self._new_P_prime(theta_angle).to_matrix()  # P derivative
 
-        ord_gate_array = collections.OrderedDict(sorted(gate_array.items()))
-        ord_gate_array_derivative = collections.OrderedDict(sorted(gate_array_derivative.items()))
+        ord_gate_array = OrderedDict(sorted(gate_array.items()))
+        ord_gate_array_derivative = OrderedDict(sorted(gate_array_derivative.items()))
 
         return ord_gate_array, ord_gate_array_derivative
 
