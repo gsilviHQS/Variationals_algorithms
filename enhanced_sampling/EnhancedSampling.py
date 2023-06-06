@@ -99,6 +99,7 @@ class EnhancedSampler():
             self._layers = standard_layers
 
             for rep in range(repetitions):
+                print('Run:',rep)
                 self.convert_to_Theta(pre_energy_freq[primitive][steps_pre - 1][rep],
                                       std_dev_freq[primitive][steps_pre - 1][rep])
 
@@ -112,7 +113,7 @@ class EnhancedSampler():
                     f_info_B = self.FischerInfo(self._initial_theta, ket_B)
 
                     if f_info_A < f_info_B:
-                        print('Using alternative circuit')
+                        print('Using alternative circuit with',self._layers,'layers')
                         likelihood_0, likelihood_1 = likelihood_0_B, likelihood_1_B
                     else:
                         self._layers = standard_layers
@@ -126,8 +127,9 @@ class EnhancedSampler():
                     sampler_enhanced = circuit_sampler.convert(circuit)
                     outcomes = self.collect_events(sampler_enhanced, outcomes)
                     energy, variance = self.compute_posterior(outcomes, likelihood)
-                    fit_energy[primitive][step][rep] = energy
-                    fit_variance[primitive][step][rep] = variance
+                    if energy is not None:
+                        fit_energy[primitive][step][rep] = energy
+                        fit_variance[primitive][step][rep] = variance
 
         return fit_energy, fit_variance
 
@@ -189,7 +191,7 @@ class EnhancedSampler():
             estimate = sum(likelihood * f_prior)
             return (likelihood * f_prior) / estimate
 
-        prior_theta = self._initial_prior_theta
+        prior_theta = self._initial_prior_theta.copy()
 
         for _ in range(sum(outcomes.values())):
             for outcome in outcomes.keys():
@@ -221,7 +223,7 @@ class EnhancedSampler():
             print('Fit successful: Converged with popt:', popt)
         except RuntimeError:
             print('\033[91m' + 'Fit error: Failed to converge' + '\033[0m')
-            theta_fit, sigma_fit = mean_guess, std_dev_guess
+            return None, None
 
         # Convert the fitted theta values to energy
         fit_energy, fit_variance = self._convert_to_energy(theta_fit, sigma_fit)
