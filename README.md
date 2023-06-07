@@ -51,6 +51,16 @@ In the folder misc/notebook/ one can find an example of the algorithm in the not
 ![Frequentist vs Enhanced schema](doc/SamplingSchema.png)
 
 
+## N-rep projection
+In the repo we include an algorithm designed to mitigate the impact of decoherence and shot noise in quantum computations carried out on Noisy Intermediate-Scale Quantum (NISQ) devices.
+The algorithm utilizes the Reduced Density Matrices (RDMs) of the system, which are typically distorted by noise, and projects them into a constrained space where they preserve specific conditions: having a fixed trace (corresponding to the number of electrons/holes in the system) and being positive semi-definite.
+
+The energy of the system, given by the expectation value of the Hamiltonian, is calculated using one- and two-electron integrals, the energy offset, as well as one- and two-particle RDMs. The algorithm considers that due to decoherence, the computed energy is likely higher than the actual ground state energy.
+
+To resolve this, the algorithm projects RDMs into the closest space adhering to the conditions mentioned above. These projections can be done not just in the particle sector but also in the hole and particle-hole sectors, using one- and two-hole RDMs or the particle-hole RDM. The algorithm performs all three types of projections and returns the one that yields the lowest energy value when transformed back into the particle sector.
+
+For a comprehensive understanding of the physics behind the algorithm and its performance, please refer to the associated research paper: Tomislav Piskor, Florian G. Eich, Michael Marthaler, Frank K. Wilhelm, Jan-Michael Reiner,Post-processing noisy quantum computations utilizing N-representability constraints,arXiv: 2304.13401 [quant-ph] (2023). You can find it [here](https://arxiv.org/abs/2304.13401 ).
+
 
 ## QLM interoperability explained
 The code in the repository is mainly written using the Qiskit library. To be able to run the circuits onto QLM quantum processing units (QPUs), we integrated the myqlm-interop library which enables the conversion of Qiskit circuits to QLM circuits (as well as the opposite).
