@@ -12,8 +12,8 @@ The repository is organized as follows:
     - *uploader_junction.py*: helper to upload the junction to the QLMaaS server so that it can be found in the remote library
     - *wrapper2myqlm.py*: helper to wrap the variational algorithms using QLM stack
 - **tests**: unit tests for the variational algorithms
-- **enhanced_sampling**: folder containg the class for Enhanced Sampling: a sampling methods that uses Bayesian inference to reduce the number of measurement
-- **n-rep_projection** : folder containg the method and an example for an algorithm to reduces quantum computation noise via constrained projections of density matrices.
+- **enhanced_sampling**: contains the class for Enhanced Sampling: a sampling methods that uses Bayesian inference to reduce the number of measurement
+- **n-rep_projection** : contains the method and an example for an algorithm to reduces quantum computation noise via constrained projections of density matrices.
 - **QLMtools**: additional tools to upload qiskit_mod to the QLMaaS server
     - *uploader_library.py*: helper to upload the qiskit_mod library to the QLMaaS server
 - *create_conda_env.sh*: script to create a Conda environment with all required libraries
@@ -26,7 +26,7 @@ The `LICENCE` file contains the default licence statement as specified in the pr
 ## Building and installing
 
 To run the code in the repo a setup to build the Conda environment is provided. 
-It installs python 3.9, qiskit libraries, and our two qiskit mods on top of the following library: qiskit-nature and qiskit-terra.
+It installs python 3.9, openfermions, openfermionpyscf, qiskit libraries, and our two qiskit mods on top of the following library: qiskit-nature and qiskit-terra.
 These two repos are modified to include additional functionalities not present in the standard qiskit libraries.
 Additionally, the Conda environment installs QLM libraries necessary to use QLM QPUs as backends.
 
