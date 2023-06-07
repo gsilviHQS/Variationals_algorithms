@@ -51,6 +51,7 @@ dependencies:
     - nest-asyncio==1.5.1
     - numpy==1.21.2
     - openfermion==1.5.1
+    - openfermionpyscf==0.5
     - parso==0.8.2
     - pexpect==4.8.0
     - pickleshare==0.7.5
