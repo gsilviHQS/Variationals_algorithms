@@ -1,10 +1,10 @@
 # NEASQC repo Variational Algorithms
 
-This repository collects Python scripts and Jupyter notebooks that allow the user to test different variational algorithms. It contains our custom functions (e.g. VHA ansatz, PBO Hamiltonian)
-that are built upon Qiskit libraries.
+This repository collects Python scripts and Jupyter notebooks that allow the user to test different variational algorithms. 
+It contains our custom functions (e.g. VHA ansatz, PBO Hamiltonian) that are built upon Qiskit libraries, as well as method to reduce number of measurement and noise.
 
 The repository is organized as follows:
-- **misc**:  contains the notebooks and scripts that showcase the variational algorithms
+- **misc**:  contains the notebooks and python scripts that showcase the variational algorithms as well as enhanced sampling method.
 - **qiskit_mod**: contains our custom functions that are built upon Qiskit libraries as well as the QLM custom junction and helpers:
     - **qiskit_nat**: the customize function built upon qiskit_nature
     - **qiskit_ter**: the customize function built upon qiskit_terra
@@ -12,6 +12,8 @@ The repository is organized as follows:
     - *uploader_junction.py*: helper to upload the junction to the QLMaaS server so that it can be found in the remote library
     - *wrapper2myqlm.py*: helper to wrap the variational algorithms using QLM stack
 - **tests**: unit tests for the variational algorithms
+- **enhanced_sampling**: folder containg the class for Enhanced Sampling: a sampling methods that uses Bayesian inference to reduce the number of measurement
+- **n-rep_projection** : folder containg the method and an example for an algorithm to reduces quantum computation noise via constrained projections of density matrices.
 - **QLMtools**: additional tools to upload qiskit_mod to the QLMaaS server
     - *uploader_library.py*: helper to upload the qiskit_mod library to the QLMaaS server
 - *create_conda_env.sh*: script to create a Conda environment with all required libraries
