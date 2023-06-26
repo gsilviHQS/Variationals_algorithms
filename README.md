@@ -64,6 +64,9 @@ To resolve this, the algorithm projects RDMs into the closest space adhering to 
 For a comprehensive understanding of the physics behind the algorithm and its performance, please refer to the associated research paper: Tomislav Piskor, Florian G. Eich, Michael Marthaler, Frank K. Wilhelm, Jan-Michael Reiner,Post-processing noisy quantum computations utilizing N-representability constraints,arXiv: 2304.13401 [quant-ph] (2023). You can find it [here](https://arxiv.org/abs/2304.13401 ).
 
 
+## Analyze formation of a benzene-C02.
+In the folder benzene-C02, it can be found a python script that contain a function to calculate the ground state energy of a benzene + CO2 system.
+
 ## QLM interoperability explained
 The code in the repository is mainly written using the Qiskit library. To be able to run the circuits onto QLM quantum processing units (QPUs), we integrated the myqlm-interop library which enables the conversion of Qiskit circuits to QLM circuits (as well as the opposite).
 Additionally, the library allows wrapping QLM QPUs onto a Qiskit`s quantum instance. This allows for easy and simple integration of QPUs as backends to run the circuits. 
