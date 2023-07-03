@@ -23,7 +23,7 @@ The `LICENCE` file contains the default licence statement as specified in the pr
 
 ## Building and installing
 
-To run the code in the repo a setup to build the Conda environment is provided. 
+To run the code in the repo a setup script to build the Conda environment is provided. 
 It installs python 3.9, qiskit libraries, and our two qiskit mods on top of the following library: qiskit-nature and qiskit-terra.
 These two repos are modified to include additional functionalities not present in the standard qiskit libraries.
 Additionally, the Conda environment installs QLM libraries necessary to use QLM QPUs as backends.
