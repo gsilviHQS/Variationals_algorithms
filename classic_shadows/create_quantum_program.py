@@ -11,7 +11,7 @@ from qoqo_shadows import create_XYZ_shadow_circuit
 num_qubits = 3
 noise_mode = "all_qubits"
 trotter_timestep = 10
-shot_per_trotter_step = 10000
+shot_per_trotter_step = 100
 initialisation = [0, 0, 1]  # Initialization of spins
 
 filename = "quantum_program.json"
@@ -40,7 +40,7 @@ noise_model_con = ContinuousDecoherenceModel().add_damping_rate(
     list(range(num_qubits)), 0.001
 )
 # Here insert the noise if needed
-noise_to_use = [noise_model_con]
+noise_to_use = []
 
 
 # Function to create the simplified spin Hamiltonian
